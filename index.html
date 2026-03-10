@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ろうどく チャレンジ！</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Zen Maru Gothic -->
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Zen Maru Gothic', sans-serif;
+            background-color: #fdfbf7;
+            background-image: radial-gradient(#ffe0b2 2px, transparent 2px);
+            background-size: 30px 30px;
+        }
+        .btn-bounce:active {
+            transform: scale(0.95);
+        }
+        .loading-dot::after {
+            content: '';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+    </style>
+</head>
+<body class="text-gray-800 min-h-screen py-8 px-4 flex flex-col items-center relative">
+
+    <!-- 設定ボタン（大人向け） -->
+    <div class="absolute top-4 right-4 md:top-6 md:right-8 z-10">
+        <button id="settingsBtn" class="text-3xl hover:scale-110 transition drop-shadow-md bg-white rounded-full p-2 shadow-md border-2 border-gray-200" title="せってい">⚙️</button>
+    </div>
+
+    <!-- 設定モーダル -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full mx-4 shadow-2xl relative border-4 border-gray-200 animate-fade-in-up">
+            <button id="closeSettingsBtn" class="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-3xl font-bold">&times;</button>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">⚙️ せってい</h2>
+            <p class="text-sm text-red-500 font-bold mb-4">※おとなのひとが さわってね</p>
+            <p class="text-sm text-gray-600 mb-4 leading-relaxed">
+                Gemini APIキーを設定すると、自分のキーを利用してAI通信（gemini-2.5-flash）を行います。<br>
+                設定しない場合は、共有の通信先を利用します。
+            </p>
+            <input type="password" id="apiKeyInput" placeholder="APIキーを入力..." class="w-full p-3 border-2 border-gray-300 rounded-xl mb-4 focus:outline-none focus:border-blue-500 font-mono">
+            <div class="flex space-x-3">
+                <button id="saveSettingsBtn" class="flex-1 bg-blue-500 text-white font-bold py-3 rounded-xl shadow hover:bg-blue-600 transition btn-bounce">ほぞんする</button>
+                <button id="clearSettingsBtn" class="flex-1 bg-gray-200 text-gray-700 font-bold py-3 rounded-xl shadow hover:bg-gray-300 transition btn-bounce">キーをけす</button>
+            </div>
+            <p id="settingsMsg" class="text-center mt-4 text-sm font-bold hidden"></p>
+        </div>
+    </div>
+
+    <div class="max-w-2xl w-full mt-4">
+        <!-- ヘッダー -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-black text-orange-500 drop-shadow-md mb-2">📖 ろうどく チャレンジ 🎤</h1>
+            <p class="text-lg text-orange-700 font-bold">AIせんせいが きみの ろうどくを きくよ！</p>
+        </header>
+
+        <!-- ステップ1：画像アップロード（教科書読み取り） -->
+        <section id="step-1" class="bg-white rounded-[2rem] shadow-xl p-6 md:p-8 mb-6 border-4 border-yellow-200 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-3 bg-yellow-400"></div>
+            <h2 class="text-2xl font-bold text-yellow-600 mb-4 flex items-center">
+                <span class="text-3xl mr-2">1️⃣</span> きょうかしょの しゃしんをとろう
+            </h2>
+            <p class="text-gray-600 mb-6 font-medium">よみたい ページを カメラで うつしてね！</p>
+            
+            <label class="block w-full text-center bg-yellow-50 hover:bg-yellow-100 border-2 border-dashed border-yellow-400 rounded-2xl p-8 cursor-pointer transition mb-4">
+                <span class="text-5xl mb-2 block">📷</span>
+                <span class="text-yellow-700 font-bold text-lg">ここをおして しゃしんを えらぶ</span>
+                <input type="file" id="imageInput" accept="image/*" capture="environment" class="hidden">
+            </label>
+
+            <!-- OCRローディング -->
+            <div id="ocrLoading" class="hidden text-center text-yellow-600 font-bold py-8">
+                <div class="inline-block animate-spin text-4xl mb-4">✨</div>
+                <p class="text-xl">AIが もじを よみとっています<span class="loading-dot"></span></p>
+            </div>
+
+            <!-- OCR結果テキストエリア -->
+            <div id="ocrResultArea" class="hidden animate-fade-in-up">
+                <p class="text-sm text-gray-500 mb-2 font-bold">▼ よみとった ぶんしょう（まちがっていたら なおしてね）</p>
+                <textarea id="originalText" class="w-full h-40 p-4 border-2 border-yellow-300 rounded-xl focus:outline-none focus:border-yellow-500 text-lg leading-relaxed resize-none"></textarea>
+                <button id="nextToStep2" class="w-full mt-6 bg-yellow-500 text-white font-black text-xl py-4 rounded-full shadow-lg hover:bg-yellow-600 transition btn-bounce">
+                    これでOK！ つぎへすすむ ➡️
+                </button>
+            </div>
+        </section>
+
+        <!-- ステップ2：朗読（録音） -->
+        <section id="step-2" class="bg-white rounded-[2rem] shadow-xl p-6 md:p-8 mb-6 border-4 border-green-200 relative overflow-hidden hidden">
+            <div class="absolute top-0 left-0 w-full h-3 bg-green-400"></div>
+            <h2 class="text-2xl font-bold text-green-600 mb-4 flex items-center">
+                <span class="text-3xl mr-2">2️⃣</span> げんきよく よんでみよう
+            </h2>
+            
+            <div class="bg-green-50 p-4 rounded-xl mb-6">
+                <p class="text-sm text-green-700 font-bold mb-2">【よむ ぶんしょう】</p>
+                <p id="displayOriginalText" class="text-lg text-gray-800 leading-relaxed max-h-32 overflow-y-auto"></p>
+            </div>
+
+            <div class="flex flex-col items-center justify-center space-y-4 mb-6">
+                <button id="startRecordBtn" class="bg-red-500 text-white font-black text-2xl py-6 px-12 rounded-full shadow-lg hover:bg-red-600 transition btn-bounce flex items-center w-full justify-center">
+                    <span class="text-3xl mr-2">🎤</span> ろくおん スタート
+                </button>
+                <button id="stopRecordBtn" class="hidden bg-gray-600 text-white font-black text-xl py-4 px-12 rounded-full shadow-lg hover:bg-gray-700 transition btn-bounce w-full justify-center">
+                    ⏹️ おわる
+                </button>
+            </div>
+
+            <p id="recordingStatus" class="text-center text-red-500 font-bold text-xl hidden animate-pulse mb-4">
+                🔴 ろくおんちゅう... はっきり よんでね！
+            </p>
+
+            <textarea id="speechText" class="w-full h-32 p-4 border-2 border-green-300 rounded-xl bg-gray-50 text-gray-700 text-lg focus:outline-none hidden" placeholder="きみが よんだ ぶんしょうが ここに でるよ。" readonly></textarea>
+
+            <button id="submitBtn" class="w-full mt-6 bg-green-500 text-white font-black text-xl py-4 rounded-full shadow-lg hover:bg-green-600 transition btn-bounce hidden">
+                AIせんせいに さいてんしてもらう ✨
+            </button>
+        </section>
+
+        <!-- ステップ3：採点結果 -->
+        <section id="step-3" class="bg-white rounded-[2rem] shadow-xl p-6 md:p-8 mb-6 border-4 border-blue-200 relative overflow-hidden hidden">
+            <div class="absolute top-0 left-0 w-full h-3 bg-blue-400"></div>
+            
+            <!-- 採点中ローディング -->
+            <div id="resultLoading" class="text-center text-blue-600 font-bold py-12">
+                <div class="text-6xl mb-6 animate-bounce">👩‍🏫</div>
+                <p class="text-2xl">AIせんせいが かんがえちゅう<span class="loading-dot"></span></p>
+                <p class="text-gray-500 mt-2">すこし まっててね！</p>
+            </div>
+
+            <!-- 結果表示エリア -->
+            <div id="resultContent" class="hidden">
+                <h2 class="text-3xl font-black text-blue-600 mb-6 text-center">🎉 けっか はっぴょう 🎉</h2>
+                
+                <div class="text-center mb-8 bg-gradient-to-br from-yellow-100 to-orange-100 py-8 rounded-3xl border-2 border-orange-200 shadow-inner">
+                    <p class="text-gray-600 font-bold mb-2">きみの とくてんは...</p>
+                    <div class="text-7xl font-black text-red-500 drop-shadow-md" id="scoreValue">
+                        --<span class="text-4xl text-gray-800">てん</span>
+                    </div>
+                </div>
+
+                <div class="space-y-4 mb-8">
+                    <!-- 正確さ -->
+                    <div class="bg-blue-50 p-5 rounded-2xl flex items-start border border-blue-100">
+                        <div class="text-3xl mr-4 mt-1">🎯</div>
+                        <div>
+                            <h3 class="font-black text-blue-800 text-lg mb-1">せいかくさ（ただしく よめたかな？）</h3>
+                            <p id="accuracyFeedback" class="text-gray-700 font-medium leading-relaxed"></p>
+                        </div>
+                    </div>
+                    <!-- 流暢さ -->
+                    <div class="bg-green-50 p-5 rounded-2xl flex items-start border border-green-100">
+                        <div class="text-3xl mr-4 mt-1">🌊</div>
+                        <div>
+                            <h3 class="font-black text-green-800 text-lg mb-1">スムーズさ（スラスラ よめたかな？）</h3>
+                            <p id="fluencyFeedback" class="text-gray-700 font-medium leading-relaxed"></p>
+                        </div>
+                    </div>
+                    <!-- 表現力（感情） -->
+                    <div class="bg-purple-50 p-5 rounded-2xl flex items-start border border-purple-100">
+                        <div class="text-3xl mr-4 mt-1">✨</div>
+                        <div>
+                            <h3 class="font-black text-purple-800 text-lg mb-1">ひょうげんりょく（きもちを こめて よめたかな？）</h3>
+                            <p id="expressionFeedback" class="text-gray-700 font-medium leading-relaxed"></p>
+                        </div>
+                    </div>
+                    <!-- 丁寧さ -->
+                    <div class="bg-teal-50 p-5 rounded-2xl flex items-start border border-teal-100">
+                        <div class="text-3xl mr-4 mt-1">🍀</div>
+                        <div>
+                            <h3 class="font-black text-teal-800 text-lg mb-1">ていねいさ（はっきり わかりやすく よめたかな？）</h3>
+                            <p id="politenessFeedback" class="text-gray-700 font-medium leading-relaxed"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 先生からのメッセージ -->
+                <div class="bg-pink-100 p-6 rounded-3xl border-4 border-pink-300 relative">
+                    <div class="absolute -top-6 -left-4 text-5xl">👩‍🏫</div>
+                    <h3 class="font-black text-pink-700 text-xl mb-3 text-center">せんせいからの メッセージ</h3>
+                    <p id="messageFeedback" class="text-gray-800 font-bold text-lg leading-relaxed"></p>
+                </div>
+
+                <button onclick="location.reload()" class="w-full mt-10 bg-blue-500 text-white font-black text-xl py-4 rounded-full shadow-lg hover:bg-blue-600 transition btn-bounce">
+                    🔄 もういちど チャレンジする！
+                </button>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const WORKER_URL = 'https://green-credit-a6fb.ikymbiz.workers.dev';
+
+            // DOM要素
+            const step1 = document.getElementById('step-1');
+            const imageInput = document.getElementById('imageInput');
+            const ocrLoading = document.getElementById('ocrLoading');
+            const ocrResultArea = document.getElementById('ocrResultArea');
+            const originalText = document.getElementById('originalText');
+            const nextToStep2 = document.getElementById('nextToStep2');
+
+            const step2 = document.getElementById('step-2');
+            const displayOriginalText = document.getElementById('displayOriginalText');
+            const startRecordBtn = document.getElementById('startRecordBtn');
+            const stopRecordBtn = document.getElementById('stopRecordBtn');
+            const recordingStatus = document.getElementById('recordingStatus');
+            const speechText = document.getElementById('speechText');
+            const submitBtn = document.getElementById('submitBtn');
+
+            const step3 = document.getElementById('step-3');
+            const resultLoading = document.getElementById('resultLoading');
+            const resultContent = document.getElementById('resultContent');
+            const scoreValue = document.getElementById('scoreValue');
+            const accuracyFeedback = document.getElementById('accuracyFeedback');
+            const fluencyFeedback = document.getElementById('fluencyFeedback');
+            const expressionFeedback = document.getElementById('expressionFeedback');
+            const politenessFeedback = document.getElementById('politenessFeedback');
+            const messageFeedback = document.getElementById('messageFeedback');
+
+            // 設定用DOM要素
+            const settingsBtn = document.getElementById('settingsBtn');
+            const settingsModal = document.getElementById('settingsModal');
+            const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+            const apiKeyInput = document.getElementById('apiKeyInput');
+            const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+            const clearSettingsBtn = document.getElementById('clearSettingsBtn');
+            const settingsMsg = document.getElementById('settingsMsg');
+
+            // 設定モーダルの制御
+            settingsBtn.addEventListener('click', () => {
+                apiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
+                settingsModal.classList.remove('hidden');
+                settingsMsg.classList.add('hidden');
+            });
+
+            closeSettingsBtn.addEventListener('click', () => {
+                settingsModal.classList.add('hidden');
+            });
+
+            saveSettingsBtn.addEventListener('click', () => {
+                const val = apiKeyInput.value.trim();
+                if (val) {
+                    localStorage.setItem('gemini_api_key', val);
+                    settingsMsg.textContent = 'ほぞんしました！';
+                    settingsMsg.className = 'text-center mt-4 text-sm font-bold text-green-600 block';
+                    setTimeout(() => settingsModal.classList.add('hidden'), 1000);
+                }
+            });
+
+            clearSettingsBtn.addEventListener('click', () => {
+                localStorage.removeItem('gemini_api_key');
+                apiKeyInput.value = '';
+                settingsMsg.textContent = 'キーをけしました！';
+                settingsMsg.className = 'text-center mt-4 text-sm font-bold text-red-600 block';
+            });
+
+            // ファイルをBase64に変換するヘルパー関数
+            const fileToBase64 = (file) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = error => reject(error);
+                });
+            };
+
+            // --- ステップ1: 画像からテキスト抽出 ---
+            imageInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                ocrLoading.classList.remove('hidden');
+                ocrResultArea.classList.add('hidden');
+                imageInput.parentElement.classList.add('hidden');
+
+                try {
+                    const base64Image = await fileToBase64(file);
+                    const prompt = "画像に書かれている日本語の文章を読み取って、テキストのみを出力してください。余計な説明やMarkdown記法は含めず、純粋な抽出テキストだけを返してください。";
+
+                    let responseText = "";
+                    const apiKey = localStorage.getItem('gemini_api_key');
+
+                    if (apiKey) {
+                        // APIキーがある場合は直接Gemini APIを叩く
+                        const match = base64Image.match(/^data:(.+);base64,(.+)$/);
+                        const mimeType = match ? match[1] : "image/jpeg";
+                        const dataStr = match ? match[2] : "";
+                        
+                        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{
+                                    parts: [
+                                        { text: prompt },
+                                        { inline_data: { mime_type: mimeType, data: dataStr } }
+                                    ]
+                                }]
+                            })
+                        });
+                        if (!res.ok) throw new Error("Gemini API Error");
+                        const data = await res.json();
+                        responseText = data.candidates[0].content.parts[0].text;
+                    } else {
+                        // APIキーがない場合はWorkerを利用
+                        const res = await fetch(WORKER_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ prompt: prompt, image: base64Image })
+                        });
+                        if (!res.ok) throw new Error("API Network response was not ok");
+                        responseText = await res.text();
+                    }
+                    
+                    // Markdownブロック等が含まれていた場合の簡易整形
+                    let text = responseText.replace(/```(?:json)?/g, '').replace(/```/g, '').trim();
+                    originalText.value = text;
+                    
+                    ocrLoading.classList.add('hidden');
+                    ocrResultArea.classList.remove('hidden');
+                } catch (error) {
+                    console.error("OCR Error:", error);
+                    alert("しゃしんの よみとりに しっぱいしました。もういちど やってみてね！");
+                    ocrLoading.classList.add('hidden');
+                    imageInput.parentElement.classList.remove('hidden');
+                }
+            });
+
+            nextToStep2.addEventListener('click', () => {
+                const text = originalText.value.trim();
+                if (!text) {
+                    alert("ぶんしょうが ないみたい。しゃしんを とりなおすか、もじを い力してね！");
+                    return;
+                }
+                step1.classList.add('hidden');
+                step2.classList.remove('hidden');
+                displayOriginalText.innerText = text;
+            });
+
+            // --- ステップ2: 音声認識 (Web Speech API) ---
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let recognition = null;
+
+            if (!SpeechRecognition) {
+                alert("ごめんなさい！このブラウザは おんせいロクオンに たいおうしていません。Chrome か Edge をつかってね！");
+            } else {
+                recognition = new SpeechRecognition();
+                recognition.lang = 'ja-JP';
+                recognition.continuous = true;
+                recognition.interimResults = true;
+
+                let finalTranscript = '';
+
+                recognition.onstart = () => {
+                    startRecordBtn.classList.add('hidden');
+                    stopRecordBtn.classList.remove('hidden');
+                    recordingStatus.classList.remove('hidden');
+                    speechText.classList.remove('hidden');
+                    submitBtn.classList.add('hidden');
+                    finalTranscript = '';
+                    speechText.value = '';
+                };
+
+                recognition.onresult = (event) => {
+                    let interimTranscript = '';
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+                    speechText.value = finalTranscript + interimTranscript;
+                };
+
+                recognition.onerror = (event) => {
+                    console.error("Speech Recognition Error:", event.error);
+                    if (event.error === 'not-allowed') {
+                        alert("マイクが つかえないみたい。ブラウザの せっていを かくにんしてね！");
+                        stopRecordingUI();
+                    }
+                };
+
+                recognition.onend = () => {
+                    stopRecordingUI();
+                };
+
+                startRecordBtn.addEventListener('click', () => {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.error(e);
+                    }
+                });
+
+                stopRecordBtn.addEventListener('click', () => {
+                    recognition.stop();
+                    stopRecordingUI();
+                });
+
+                function stopRecordingUI() {
+                    startRecordBtn.classList.remove('hidden');
+                    stopRecordBtn.classList.add('hidden');
+                    recordingStatus.classList.add('hidden');
+                    
+                    if (speechText.value.trim().length > 0) {
+                        submitBtn.classList.remove('hidden');
+                        startRecordBtn.innerHTML = '<span class="text-3xl mr-2">🔄</span> もういちど ろくおんする';
+                        startRecordBtn.classList.replace('bg-red-500', 'bg-orange-400');
+                        startRecordBtn.classList.replace('hover:bg-red-600', 'hover:bg-orange-500');
+                    }
+                }
+            }
+
+            // --- ステップ3: GenAIで採点 ---
+            submitBtn.addEventListener('click', async () => {
+                const originalTextVal = originalText.value.trim();
+                const speechTextVal = speechText.value.trim();
+
+                if (!speechTextVal) {
+                    alert("おんせいが ききとれなかったみたい。もういちど ろくおんしてね！");
+                    return;
+                }
+
+                step2.classList.add('hidden');
+                step3.classList.remove('hidden');
+
+                const combinedPrompt = `
+あなたは小学生向けの優しくて褒め上手な国語の先生です。
+児童が教科書を朗読しました。以下の「教科書の文章」と、児童が読んだ「朗読した文章(音声認識結果)」を比較して採点してください。
+
+採点基準：
+1. 正確さ：読み間違いや飛ばしがないか
+2. スムーズさ：つっかえずにスラスラ読めているか
+3. 感情・表現力：物語の登場人物になりきったり、感情を込めて元気よく読めているか
+4. 丁寧さ：一語一語をはっきりと、聞く人への配慮をもって丁寧に読めているか（音声認識の精度からも推測してください）
+
+【指示】
+・小学生が読んで分かるように、ひらがなを多めに、優しい言葉で書いてください。
+・厳しくせず、とにかくたくさん褒めてモチベーションを上げてください！
+・出力は必ず以下のJSONフォーマットのみにしてください。Markdownのコードブロック( \`\`\`json 等 )は絶対に含めないでください。純粋なJSON文字列のみ出力してください。
+
+{
+  "score": 100点満点での点数(数値のみ),
+  "accuracy": "正確さのフィードバック(ひらがな多め)",
+  "fluency": "スムーズさのフィードバック(ひらがな多め)",
+  "expression": "感情や表現力のフィードバック(ひらがな多め)",
+  "politeness": "丁寧さのフィードバック(ひらがな多め)",
+  "message": "先生からの全体のメッセージ（とにかくたくさん褒める）"
+}
+
+【教科書の文章】
+${originalTextVal}
+
+【朗読した文章】
+${speechTextVal}
+`;
+
+                try {
+                    let responseText = "";
+                    const apiKey = localStorage.getItem('gemini_api_key');
+
+                    if (apiKey) {
+                        // APIキーがある場合は直接Gemini APIを叩く
+                        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: combinedPrompt }] }],
+                                generationConfig: {
+                                    responseMimeType: "application/json"
+                                }
+                            })
+                        });
+                        if (!res.ok) throw new Error("Gemini API Error");
+                        const data = await res.json();
+                        responseText = data.candidates[0].content.parts[0].text;
+                    } else {
+                        // APIキーがない場合はWorkerを利用
+                        const res = await fetch(WORKER_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ prompt: combinedPrompt })
+                        });
+                        if (!res.ok) throw new Error("API Network response was not ok");
+                        responseText = await res.text();
+                    }
+
+                    let jsonStr = responseText;
+                    const jsonMatch = responseText.match(/```(?:json)?\n([\s\S]*?)\n```/);
+                    if(jsonMatch) {
+                        jsonStr = jsonMatch[1];
+                    }
+                    const startIndex = jsonStr.indexOf('{');
+                    const endIndex = jsonStr.lastIndexOf('}');
+                    if (startIndex !== -1 && endIndex !== -1) {
+                        jsonStr = jsonStr.substring(startIndex, endIndex + 1);
+                    }
+
+                    let resultData;
+                    try {
+                        resultData = JSON.parse(jsonStr);
+                    } catch (e) {
+                        const tempObj = JSON.parse(responseText);
+                        if (tempObj.response || tempObj.text) {
+                            let innerText = tempObj.response || tempObj.text;
+                            const innerMatch = innerText.match(/```(?:json)?\n([\s\S]*?)\n```/);
+                            if (innerMatch) innerText = innerMatch[1];
+                            const sIdx = innerText.indexOf('{');
+                            const eIdx = innerText.lastIndexOf('}');
+                            if (sIdx !== -1 && eIdx !== -1) {
+                                resultData = JSON.parse(innerText.substring(sIdx, eIdx + 1));
+                            }
+                        } else {
+                            throw e;
+                        }
+                    }
+
+                    // 結果をUIに反映
+                    scoreValue.innerHTML = `${resultData.score}<span class="text-4xl text-gray-800">てん</span>`;
+                    accuracyFeedback.innerText = resultData.accuracy;
+                    fluencyFeedback.innerText = resultData.fluency;
+                    expressionFeedback.innerText = resultData.expression;
+                    politenessFeedback.innerText = resultData.politeness;
+                    messageFeedback.innerText = resultData.message;
+
+                    resultLoading.classList.add('hidden');
+                    resultContent.classList.remove('hidden');
+
+                } catch (error) {
+                    console.error("API Error:", error);
+                    // エラー時のフォールバック表示
+                    scoreValue.innerHTML = `💯<span class="text-4xl text-gray-800">はなまる！</span>`;
+                    accuracyFeedback.innerText = "さいごまで がんばって よめたね！";
+                    fluencyFeedback.innerText = "いっしょうけんめいな のが つたわってきたよ！";
+                    expressionFeedback.innerText = "きもちを こめて よんでくれたのが わかったよ！";
+                    politenessFeedback.innerText = "ひとつひとつの もじを ていねいに よめていました！";
+                    messageFeedback.innerText = "AIせんせいの ちょうしが わるくて くわしい さいてんが できなかったけど、きみが がんばって よんだことは ちゃんと わかっているよ！ はなまる です！💮";
+                    
+                    resultLoading.classList.add('hidden');
+                    resultContent.classList.remove('hidden');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

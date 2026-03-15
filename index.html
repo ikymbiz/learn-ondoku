@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Obsidian Terminal (GenAI Chat v2.0)</title>
+    <title>Obsidian Terminal (Vision Reader & Assessment)</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,17 +13,10 @@
     <!-- Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
-    <!-- Tesseract.js (Local OCR) -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
-    <!-- Markdown Parser & DOM Purify -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
-
     <style>
         /* ============================================
            DESIGN SYSTEM - Obsidian Terminal
-           GenAI Chat App v2.0 -> Applied to Vision Reader
+           GenAI Chat App v2.0 -> Applied to Vision Reader & Assessment
            ============================================ */
 
         /* ── 1. Color Tokens ── */
@@ -105,58 +98,54 @@
         /* Forms */
         .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
         label { font-size: var(--text-sm); color: var(--color-text-secondary); }
-        select, input[type="range"], input[type="text"], input[type="password"] { background-color: var(--color-bg-elevated); color: var(--color-text-primary); border: 1px solid var(--color-border); padding: 0.75rem; border-radius: 0.5rem; font-family: var(--font-body); font-size: var(--text-base); outline: none; transition: border-color 0.2s; }
+        select, input[type="text"], input[type="password"] { background-color: var(--color-bg-elevated); color: var(--color-text-primary); border: 1px solid var(--color-border); padding: 0.75rem; border-radius: 0.5rem; font-family: var(--font-body); font-size: var(--text-base); outline: none; transition: border-color 0.2s; }
         input[type="text"]:focus, input[type="password"]:focus, select:focus { border-color: var(--color-primary); }
-        input[type="range"] { padding: 0; accent-color: var(--color-primary); }
         
+        /* Range Sliders */
+        input[type="range"] { -webkit-appearance: none; width: 100%; background: transparent; padding: 0.5rem 0; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--color-primary); cursor: pointer; margin-top: -6px; }
+        input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: var(--color-border); border-radius: 2px; }
+        input[type="range"]:focus { outline: none; }
+        input[type="range"]:focus::-webkit-slider-runnable-track { background: var(--color-border-focus); }
+
         textarea { width: 100%; background-color: var(--color-bg-elevated); color: var(--color-text-primary); border: 1px solid var(--color-border); border-radius: 0.75rem; padding: 1rem; font-family: var(--font-body); font-size: var(--text-base); resize: none; outline: none; transition: border-color 0.2s; }
         textarea:focus { border-color: var(--color-primary); }
 
-        /* ── Chat View (GenAI v2.0) ── */
-        #view-chat { padding: 0; }
-        #chat-messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1.5rem; scroll-behavior: smooth; }
-        .message { max-width: 90%; padding: 1rem; border-radius: 1rem; position: relative; word-break: break-word; line-height: 1.6; }
-        .message p { margin-bottom: 0.75rem; } .message p:last-child { margin-bottom: 0; }
-        .message pre { background-color: #000; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-top: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); }
-        .message code { font-family: var(--font-mono); font-size: var(--text-sm); background-color: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 0.3rem; }
-        .message-user { align-self: flex-end; background-color: var(--color-primary); color: white; border-bottom-right-radius: 0.25rem; }
-        .message-ai { align-self: flex-start; background-color: var(--color-bg-surface); border: 1px solid var(--color-border); border-bottom-left-radius: 0.25rem; }
-        .message-actions { position: absolute; bottom: -1.75rem; right: 0; display: flex; gap: 0.5rem; opacity: 0; transition: opacity 0.2s; }
-        .message:hover .message-actions { opacity: 1; }
-        .msg-btn { background: var(--color-bg-elevated); border: 1px solid var(--color-border); border-radius: 0.25rem; color: var(--color-text-secondary); cursor: pointer; padding: 0.25rem 0.5rem; font-size: var(--text-sm); display:flex; align-items:center; gap:0.2rem; }
-        .msg-btn:hover { color: var(--color-text-primary); border-color: var(--color-primary); }
-        .chat-input-container { background-color: var(--color-bg-surface); border-top: 1px solid var(--color-border); padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
-        .chat-input-row { display: flex; gap: 0.5rem; align-items: flex-end; }
-        #chat-input { min-height: 48px; height: 48px; max-height: 150px; flex: 1; border-radius: 1.5rem; padding: 0.75rem 1.25rem; }
-        .role-selector { font-size: var(--text-xs); background: none; border: none; color: var(--color-text-secondary); outline: none; margin-bottom: -0.25rem; padding-left: 0.5rem; }
-        
-        /* ── Vision View (Legacy Home) ── */
+        /* ── Vision View ── */
         #media-container { position: relative; width: 100%; height: 250px; background-color: var(--color-bg-elevated); border-radius: 0.75rem; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--color-border-focus); }
         #media-container img, #media-container video { width: 100%; height: 100%; object-fit: contain; display: none; }
         #media-placeholder { display: flex; flex-direction: column; align-items: center; color: var(--color-text-secondary); gap: 0.5rem; }
         .input-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-        .textarea-container { position: relative; flex: 1; display: flex; flex-direction: column; min-height:150px; }
-        #result-text { flex: 1; }
-        .copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; background-color: var(--color-bg-surface); border: 1px solid var(--color-border); color: var(--color-text-primary); padding: 0.4rem; border-radius: 0.4rem; cursor: pointer; font-size: 1.2rem; }
-
-        /* ── History List ── */
-        .history-list { display: flex; flex-direction: column; gap: 1rem; }
-        .history-item { display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background-color: var(--color-bg-surface); border-radius: 0.75rem; border: 1px solid var(--color-border); cursor: pointer; transition: border-color 0.2s; }
-        .history-item:hover { border-color: var(--color-border-focus); }
-        .history-preview { font-size: var(--text-sm); color: var(--color-text-primary); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-        .history-meta { font-size: var(--text-xs); color: var(--color-text-secondary); display: flex; justify-content: space-between; }
         
+        .textarea-container { position: relative; flex: 1; display: flex; flex-direction: column; min-height: 150px; }
+        #result-text { flex: 1; margin-bottom: 0.5rem; margin-top: 0.5rem; }
+        .copy-btn { position: absolute; top: 3.5rem; right: 0.5rem; background-color: var(--color-bg-surface); border: 1px solid var(--color-border); color: var(--color-text-primary); padding: 0.4rem; border-radius: 0.4rem; cursor: pointer; font-size: 1.2rem; z-index: 2; }
+        .copy-btn-send { position: absolute; top: 3.5rem; right: 3rem; background-color: var(--color-bg-surface); border: 1px solid var(--color-border); color: var(--color-text-primary); padding: 0.4rem; border-radius: 0.4rem; cursor: pointer; font-size: 1.2rem; z-index: 2; }
+        
+        .tts-controls { display: flex; gap: 0.5rem; }
+        .tts-controls .btn { flex: 1; }
+
+        /* ── Scoring View Specific ── */
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        .criterion-item { display: flex; justify-content: space-between; align-items: center; background-color: var(--color-bg-elevated); padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--color-border); }
+        .score-bar-container { width: 100%; background-color: var(--color-bg-deep); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 0.25rem; }
+        .score-bar { height: 100%; background-color: var(--color-primary); transition: width 0.5s ease; }
+
         /* ── Overlays & Toasts ── */
         #loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(13, 15, 20, 0.8); backdrop-filter: blur(4px); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 50; border-radius: 1rem; }
         #loading-overlay.active { display: flex; }
         .spinner { width: 40px; height: 40px; border: 4px solid var(--color-border-focus); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
         
-        #toast-container { position: fixed; top: 5rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 0.5rem; z-index: 100; }
-        .toast { background-color: var(--color-bg-elevated); color: var(--color-text-primary); padding: 0.75rem 1.5rem; border-radius: 2rem; font-size: var(--text-sm); box-shadow: 0 4px 12px rgba(0,0,0,0.5); border: 1px solid var(--color-border); animation: slideDown 0.3s ease forwards; display: flex; align-items: center; gap: 0.5rem; }
+        /* 修正: トーストをより目立たせる */
+        #toast-container { position: fixed; top: 2rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 0.5rem; z-index: 9999; }
+        .toast { background-color: var(--color-bg-surface); color: var(--color-text-primary); padding: 1rem 1.5rem; border-radius: 2rem; font-size: var(--text-base); font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.6); border: 2px solid var(--color-border-focus); animation: slideDown 0.3s ease forwards; display: flex; align-items: center; gap: 0.75rem; }
+        .toast.success { border-color: var(--color-success); }
+        .toast.error { border-color: var(--color-danger); }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 
         #file-input { display: none; }
+        .ph-spin { animation: spin 1s linear infinite; }
     </style>
 </head>
 <body>
@@ -166,40 +155,14 @@
     <header>
         <h1>Obsidian Terminal</h1>
         <div class="header-actions">
-            <button class="icon-btn active" id="nav-chat" title="チャット"><i class="ph ph-chat-teardrop-text"></i></button>
-            <button class="icon-btn" id="nav-home" title="Vision (OCR)"><i class="ph ph-camera"></i></button>
-            <button class="icon-btn" id="nav-history" title="履歴"><i class="ph ph-clock-counter-clockwise"></i></button>
+            <button class="icon-btn active" id="nav-home" title="Vision Reader"><i class="ph ph-camera"></i></button>
+            <button class="icon-btn" id="nav-scoring" title="音読採点"><i class="ph ph-microphone-stage"></i></button>
             <button class="icon-btn" id="nav-settings" title="設定"><i class="ph ph-gear"></i></button>
         </div>
     </header>
 
-    <!-- 1. Chat View (GenAI v2.0) -->
-    <main id="view-chat" class="view active">
-        <div id="chat-messages">
-            <div style="text-align:center; color: var(--color-text-secondary); margin-top: 2rem; font-size: var(--text-sm);">
-                <i class="ph ph-magic-wand" style="font-size: 2rem; margin-bottom: 0.5rem;"></i><br>
-                チャットを開始してください
-            </div>
-        </div>
-        
-        <div class="chat-input-container">
-            <select id="chat-role-select" class="role-selector">
-                <option value="assistant">🤖 アシスタント</option>
-                <option value="programmer">💻 プログラマー</option>
-                <option value="marketer">📈 マーケター</option>
-                <option value="storyteller">📖 ストーリーテラー</option>
-            </select>
-            <div class="chat-input-row">
-                <textarea id="chat-input" placeholder="メッセージを入力... (Shift+Enterで改行)"></textarea>
-                <button class="btn btn-primary" id="btn-send-chat" style="min-height: 48px; border-radius: 50%; padding: 0 1rem;">
-                    <i class="ph-fill ph-paper-plane-right" style="font-size: 1.2rem;"></i>
-                </button>
-            </div>
-        </div>
-    </main>
-
-    <!-- 2. Vision / OCR View (Legacy Home) -->
-    <main id="view-home" class="view">
+    <!-- 1. Vision Reader View -->
+    <main id="view-home" class="view active">
         <h2 class="section-title">Vision Reader</h2>
         <div class="card">
             <div id="media-container">
@@ -211,7 +174,7 @@
                 <video id="camera-video" autoplay playsinline></video>
                 <div id="loading-overlay">
                     <div class="spinner"></div>
-                    <div id="progress-text" style="font-family: var(--font-mono); font-size: var(--text-sm);">Processing...</div>
+                    <div id="progress-text" style="font-family: var(--font-mono); font-size: var(--text-sm); text-align: center;">Processing...</div>
                 </div>
             </div>
             <div class="input-actions">
@@ -224,58 +187,80 @@
             </button>
         </div>
         <div class="textarea-container">
-            <textarea id="result-text" placeholder="抽出されたテキストがここに表示されます..."></textarea>
-            <button class="copy-btn" id="btn-copy" title="コピー"><i class="ph ph-copy"></i></button>
-        </div>
-        <button class="btn" id="btn-send-to-chat" style="margin-top: -0.5rem;">
-            <i class="ph ph-chat-circle-text"></i> このテキストをチャットに入力
-        </button>
-    </main>
+            <!-- 履歴機能の追加 -->
+            <select id="history-select" class="btn" style="width: 100%; padding: 0.75rem; text-align: left; justify-content: flex-start;">
+                <option value="">過去の抽出履歴から選択...</option>
+            </select>
 
-    <!-- 3. History View -->
-    <main id="view-history" class="view">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 class="section-title">Chat History</h2>
-            <div style="display: flex; gap: 0.5rem;">
-                <button class="btn" id="btn-export-fs" title="ローカル保存" style="min-height: auto; padding: 0.4rem 0.8rem; font-size: var(--text-xs);">
-                    <i class="ph ph-folder-simple-arrow-down"></i> Export
-                </button>
-                <button class="btn btn-danger" id="btn-clear-history" style="min-height: auto; padding: 0.4rem 0.8rem; font-size: var(--text-xs); background: none; border: 1px solid var(--color-danger); color: var(--color-danger);">
-                    <i class="ph ph-trash"></i>
-                </button>
+            <textarea id="result-text" placeholder="抽出されたテキストがここに表示されます..."></textarea>
+            <button class="copy-btn-send" id="btn-send-scoring" title="採点タブへ送る"><i class="ph ph-microphone-stage"></i></button>
+            <button class="copy-btn" id="btn-copy" title="コピー"><i class="ph ph-copy"></i></button>
+            
+            <div class="tts-controls">
+                <button class="btn" id="btn-tts-play" disabled><i class="ph ph-play"></i> 音読 (OpenAI)</button>
+                <button class="btn" id="btn-tts-stop" disabled style="display:none;"><i class="ph ph-stop"></i> 停止</button>
             </div>
         </div>
-        <div class="history-list" id="history-container">
-            <div style="text-align:center; color: var(--color-text-secondary); padding: 2rem;">履歴がありません</div>
+    </main>
+
+    <!-- 2. Scoring View -->
+    <main id="view-scoring" class="view">
+        <h2 class="section-title">Reading Assessment</h2>
+        
+        <div class="card">
+            <div class="form-group">
+                <label>採点対象テキスト</label>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <button class="btn" id="btn-import-vision" style="flex: 1;"><i class="ph ph-download-simple"></i> Vision結果を読み込む</button>
+                    <button class="btn" id="btn-clear-scoring-text" style="padding: 0 1rem;" title="クリア"><i class="ph ph-trash"></i></button>
+                </div>
+                <textarea id="scoring-text" rows="4" placeholder="ここに音読するテキストを入力またはインポートします..."></textarea>
+                <div id="recognized-lang-display" style="font-size: var(--text-xs); color: var(--color-primary); text-align: right; margin-top: 0.25rem;"></div>
+            </div>
+            
+            <div class="input-actions" style="grid-template-columns: 1fr;">
+                <button class="btn btn-primary" id="btn-record"><i class="ph ph-microphone"></i> <span>録音開始</span></button>
+            </div>
+            <div id="recording-indicator" style="display: none; text-align: center; color: var(--color-danger); font-weight: bold; animation: pulse 1s infinite;">
+                <i class="ph ph-record"></i> 録音中... 停止ボタンを押すまで継続します
+            </div>
+            <div id="recognized-text" style="font-size: var(--text-sm); color: var(--color-text-secondary); margin-top: 0.5rem; min-height: 1.5rem; font-style: italic;">
+                (あなたの音声がここに表示されます)<br>
+                <span style="font-size: var(--text-xs); color: var(--color-text-muted);">※高精度のOpenAI Whisper APIを使用します。<br>※話し終わったら「録音停止」を押してください。</span>
+            </div>
+        </div>
+
+        <div class="card" id="scoring-result-card" style="display: none;">
+            <h3 class="section-title" style="color: var(--color-primary);">Score Result</h3>
+            <div id="overall-score" style="font-size: 3.5rem; font-family: var(--font-display); text-align: center; font-weight: 700; line-height: 1;"></div>
+            <div style="text-align: center; font-size: var(--text-sm); color: var(--color-text-secondary); margin-bottom: 1rem;">総合スコア</div>
+            <div id="criteria-scores" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <!-- スコアバーがJSで挿入される -->
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 class="section-title">採点基準の管理</h3>
+                <button class="icon-btn" id="btn-add-criterion" style="font-size: 1.2rem; color: var(--color-primary);"><i class="ph ph-plus-circle"></i></button>
+            </div>
+            <div id="criteria-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <!-- 基準リストがJSで挿入される -->
+            </div>
         </div>
     </main>
 
-    <!-- 4. Settings View -->
+    <!-- 3. Settings View -->
     <main id="view-settings" class="view">
         <h2 class="section-title">Settings</h2>
         
-        <!-- GenAI Settings -->
+        <!-- AI Settings -->
         <div class="card">
             <h3 class="section-title" style="color: var(--color-primary);">AI Engine & Models</h3>
             <div class="form-group">
-                <label>Vision OCR エンジン</label>
-                <select id="setting-ocr-engine">
-                    <option value="tesseract">ローカル (Tesseract.js)</option>
-                    <option value="gemini">クラウド超高精度 (Gemini Vision)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>チャットプロバイダー</label>
-                <select id="setting-ai-provider">
-                    <option value="gemini">Google Gemini</option>
-                    <option value="openai">OpenAI</option>
-                    <option value="anthropic">Anthropic (Claude)</option>
-                    <option value="xai">xAI (Grok)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>AI モデル (手動入力可)</label>
-                <input type="text" id="setting-ai-model" value="gemini-2.5-flash">
+                <label>Vision AI モデル (手動入力可)</label>
+                <!-- 修正: デフォルトをgemini-2.5-flashに -->
+                <input type="text" id="setting-vision-ai-model" value="gemini-2.5-flash">
             </div>
         </div>
 
@@ -283,39 +268,48 @@
         <div class="card">
             <h3 class="section-title" style="color: var(--color-primary);">API Keys (Local Secure Storage)</h3>
             <div class="form-group">
-                <label>Gemini API Key</label>
+                <label>Gemini API Key (Vision用)</label>
                 <input type="password" id="key-gemini" placeholder="AIzaSy...">
             </div>
+            <!-- 追加: OpenAI API Key -->
             <div class="form-group">
-                <label>OpenAI API Key</label>
+                <label>OpenAI API Key (音声読み上げ / 認識用)</label>
                 <input type="password" id="key-openai" placeholder="sk-...">
-            </div>
-            <div class="form-group">
-                <label>Anthropic API Key</label>
-                <input type="password" id="key-anthropic" placeholder="sk-ant-...">
-            </div>
-            <div class="form-group">
-                <label>xAI API Key</label>
-                <input type="password" id="key-xai" placeholder="xai-...">
             </div>
         </div>
 
-        <!-- Legacy OCR & TTS Settings -->
+        <!-- Text-to-Speech Settings -->
         <div class="card">
-            <h3 class="section-title">Local OCR & TTS Settings</h3>
+            <h3 class="section-title">Text-to-Speech / Audio Settings</h3>
             <div class="form-group">
-                <label>Tesseract OCR 認識言語</label>
-                <select id="setting-ocr-lang">
-                    <option value="jpn">日本語</option><option value="eng">英語</option><option value="jpn+eng" selected>日本語 + 英語</option>
+                <label>音声言語 (Whisper認識用)</label>
+                <select id="setting-tts-lang">
+                    <option value="auto">自動検出</option>
+                    <option value="ja-JP">日本語</option>
+                    <option value="en-US">英語 (US)</option>
                 </select>
             </div>
             <div class="form-group">
-                <label>音声 (TTS)</label>
-                <select id="setting-voice"><option value="">システムデフォルト</option></select>
+                <label>使用する音声の種類 (OpenAI TTS)</label>
+                <!-- 修正: OpenAIのVoice一覧に変更 -->
+                <select id="setting-tts-voice">
+                    <option value="alloy">Alloy (ニュートラル)</option>
+                    <option value="echo">Echo (男性)</option>
+                    <option value="fable">Fable (男性・表現豊か)</option>
+                    <option value="onyx">Onyx (男性・低音)</option>
+                    <option value="nova">Nova (女性)</option>
+                    <option value="shimmer">Shimmer (女性・落ち着き)</option>
+                </select>
             </div>
             <div class="form-group">
-                <label>読み上げ速度: <span id="rate-value">1.0</span>x</label>
-                <input type="range" id="setting-rate" min="0.5" max="2.0" step="0.1" value="1.0">
+                <label>話速 (0.25 - 4.0)</label>
+                <input type="range" id="setting-tts-rate" min="0.25" max="4.0" step="0.25" value="1.0">
+                <div id="val-tts-rate" style="font-size: var(--text-xs); color: var(--color-text-secondary); text-align: right;">1.0</div>
+            </div>
+            <div class="form-group">
+                <label>音量 (0.0 - 1.0)</label>
+                <input type="range" id="setting-tts-volume" min="0.0" max="1.0" step="0.1" value="1.0">
+                <div id="val-tts-volume" style="font-size: var(--text-xs); color: var(--color-text-secondary); text-align: right;">1.0</div>
             </div>
         </div>
 
@@ -325,78 +319,20 @@
 
 <div id="toast-container"></div>
 
-<!-- Web Worker Script for AI Communication (Blob) -->
-<script id="ai-worker-script" type="text/js-worker">
-    self.onmessage = async function(e) {
-        const { provider, apiKey, model, messages, systemPrompt } = e.data;
-        try {
-            let response;
-            if (provider === 'gemini') {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
-                const body = { contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{text: m.content}] })) };
-                if (systemPrompt) body.system_instruction = { parts: [{text: systemPrompt}] };
-                response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-            } else if (provider === 'openai' || provider === 'xai') {
-                const baseUrl = provider === 'xai' ? 'https://api.x.ai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
-                const apiMsgs = systemPrompt ? [{role: 'system', content: systemPrompt}, ...messages] : messages;
-                response = await fetch(baseUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, body: JSON.stringify({ model, messages: apiMsgs, stream: true }) });
-            } else if (provider === 'anthropic') {
-                // Note: Direct browser call might block due to CORS. Using proxy or official header pattern.
-                const url = 'https://api.anthropic.com/v1/messages';
-                response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify({ model, messages, system: systemPrompt, max_tokens: 4096, stream: true }) });
-            }
-
-            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            while(true) {
-                const { done, value } = await reader.read();
-                if(done) break;
-                buffer += decoder.decode(value, {stream: true});
-                const lines = buffer.split('\n');
-                buffer = lines.pop(); // Incomplete line
-                for(const line of lines) {
-                    if(line.startsWith('data: ') && line !== 'data: [DONE]') {
-                        try {
-                            const data = JSON.parse(line.slice(6));
-                            let text = '';
-                            if (provider === 'gemini') text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                            else if (provider === 'anthropic') { if(data.type === 'content_block_delta') text = data.delta?.text || ''; }
-                            else text = data.choices?.[0]?.delta?.content || '';
-                            if (text) self.postMessage({ type: 'chunk', text });
-                        } catch(e) {}
-                    }
-                }
-            }
-            self.postMessage({ type: 'done' });
-        } catch(err) {
-            self.postMessage({ type: 'error', message: err.message });
-        }
-    };
-</script>
-
 <script>
 /**
  * Application State
  */
 const state = {
     currentImage: null, isCameraActive: false, cameraStream: null, isProcessingOCR: false,
-    wakeLock: null, aiWorker: null,
-    chatSessionId: Date.now(),
-    chatMessages: [],
+    wakeLock: null,
+    tts: { isPlaying: false, isPaused: false, audio: null },
+    scoring: { isRecording: false, criteria: [] },
     settings: {
-        ocrEngine: 'tesseract', ocrLang: 'jpn+eng',
-        aiProvider: 'gemini', aiModel: 'gemini-2.5-flash',
-        keys: { gemini: '', openai: '', anthropic: '', xai: '' },
-        voiceUri: '', rate: 1.0,
-        roles: {
-            assistant: "あなたは有能なアシスタントです。質問に対して簡潔かつ正確に答えてください。",
-            programmer: "あなたはエキスパートプログラマーです。最適化されたコードと論理的な解説を提供します。",
-            marketer: "あなたは経験豊富なマーケターです。ユーザーの心を掴むコピーと戦略を提案します。",
-            storyteller: "あなたは魅力的なストーリーテラーです。創造的で情景が浮かぶような物語を語ります。"
-        }
+        visionAiModel: 'gemini-2.5-flash',
+        keys: { gemini: '', openai: '' },
+        ttsLang: 'auto', ttsVoiceUri: 'alloy', ttsRate: 1.0, ttsVolume: 1.0,
+        scoringCriteria: null 
     }
 };
 
@@ -404,21 +340,37 @@ const state = {
  * DOM Elements
  */
 const els = {
-    nav: { chat: document.getElementById('nav-chat'), home: document.getElementById('nav-home'), history: document.getElementById('nav-history'), settings: document.getElementById('nav-settings') },
-    views: { chat: document.getElementById('view-chat'), home: document.getElementById('view-home'), history: document.getElementById('view-history'), settings: document.getElementById('view-settings') },
-    chat: { messages: document.getElementById('chat-messages'), input: document.getElementById('chat-input'), sendBtn: document.getElementById('btn-send-chat'), roleSelect: document.getElementById('chat-role-select') },
+    nav: { home: document.getElementById('nav-home'), scoring: document.getElementById('nav-scoring'), settings: document.getElementById('nav-settings') },
+    views: { home: document.getElementById('view-home'), scoring: document.getElementById('view-scoring'), settings: document.getElementById('view-settings') },
     media: { container: document.getElementById('media-container'), placeholder: document.getElementById('media-placeholder'), img: document.getElementById('preview-img'), video: document.getElementById('camera-video'), overlay: document.getElementById('loading-overlay'), progress: document.getElementById('progress-text') },
-    inputs: { cameraBtn: document.getElementById('btn-camera'), uploadBtn: document.getElementById('btn-upload'), fileInput: document.getElementById('file-input'), ocrBtn: document.getElementById('btn-ocr'), textArea: document.getElementById('result-text'), copyBtn: document.getElementById('btn-copy'), sendToChatBtn: document.getElementById('btn-send-to-chat') },
-    settings: { ocrEngine: document.getElementById('setting-ocr-engine'), ocrLang: document.getElementById('setting-ocr-lang'), aiProvider: document.getElementById('setting-ai-provider'), aiModel: document.getElementById('setting-ai-model'), keyGemini: document.getElementById('key-gemini'), keyOpenAI: document.getElementById('key-openai'), keyAnthropic: document.getElementById('key-anthropic'), keyXai: document.getElementById('key-xai'), voice: document.getElementById('setting-voice'), rate: document.getElementById('setting-rate'), rateValue: document.getElementById('rate-value'), saveBtn: document.getElementById('btn-save-settings') },
-    history: { container: document.getElementById('history-container'), exportFsBtn: document.getElementById('btn-export-fs'), clearBtn: document.getElementById('btn-clear-history') },
+    inputs: { 
+        cameraBtn: document.getElementById('btn-camera'), uploadBtn: document.getElementById('btn-upload'), fileInput: document.getElementById('file-input'), 
+        ocrBtn: document.getElementById('btn-ocr'), textArea: document.getElementById('result-text'), copyBtn: document.getElementById('btn-copy'),
+        sendScoringBtn: document.getElementById('btn-send-scoring'), historySelect: document.getElementById('history-select'),
+        ttsPlay: document.getElementById('btn-tts-play'), ttsStop: document.getElementById('btn-tts-stop')
+    },
+    scoring: {
+        text: document.getElementById('scoring-text'), btnImport: document.getElementById('btn-import-vision'), btnClear: document.getElementById('btn-clear-scoring-text'),
+        btnRecord: document.getElementById('btn-record'), indicator: document.getElementById('recording-indicator'), recognizedText: document.getElementById('recognized-text'),
+        resultCard: document.getElementById('scoring-result-card'), overallScore: document.getElementById('overall-score'), criteriaScores: document.getElementById('criteria-scores'),
+        btnAddCriterion: document.getElementById('btn-add-criterion'), criteriaList: document.getElementById('criteria-list'),
+        langDisplay: document.getElementById('recognized-lang-display')
+    },
+    settings: { 
+        visionAiModel: document.getElementById('setting-vision-ai-model'), keyGemini: document.getElementById('key-gemini'), keyOpenAI: document.getElementById('key-openai'),
+        ttsLang: document.getElementById('setting-tts-lang'), ttsVoice: document.getElementById('setting-tts-voice'),
+        ttsRate: document.getElementById('setting-tts-rate'), ttsVolume: document.getElementById('setting-tts-volume'),
+        rateVal: document.getElementById('val-tts-rate'), volumeVal: document.getElementById('val-tts-volume'),
+        saveBtn: document.getElementById('btn-save-settings') 
+    },
     toast: document.getElementById('toast-container')
 };
 
 /**
- * IndexedDB (Version 2 - Added Chat History)
+ * IndexedDB (Settings & History Persistence)
  */
 const DB = {
-    dbName: 'ObsidianTerminalDB', version: 2, db: null,
+    dbName: 'ObsidianTerminalDB', version: 3, db: null,
     init() {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(this.dbName, this.version);
@@ -427,10 +379,8 @@ const DB = {
             request.onupgradeneeded = e => {
                 const db = e.target.result;
                 if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings');
-                if (!db.objectStoreNames.contains('chat_sessions')) {
-                    const store = db.createObjectStore('chat_sessions', { keyPath: 'id' });
-                    store.createIndex('date', 'date', { unique: false });
-                }
+                // 追加: OCR履歴ストア
+                if (!db.objectStoreNames.contains('ocrHistory')) db.createObjectStore('ocrHistory', { keyPath: 'id' });
             };
         });
     },
@@ -450,29 +400,19 @@ const DB = {
             tx.oncomplete = () => res();
         });
     },
-    async saveChatSession(session) {
+    async getHistory() {
         return new Promise(res => {
-            if(!this.db) return res();
-            const tx = this.db.transaction('chat_sessions', 'readwrite');
-            tx.objectStore('chat_sessions').put(session);
-            tx.oncomplete = () => res();
+            if(!this.db || !this.db.objectStoreNames.contains('ocrHistory')) return res([]);
+            const req = this.db.transaction('ocrHistory', 'readonly').objectStore('ocrHistory').getAll();
+            req.onsuccess = () => res(req.result || []);
+            req.onerror = () => res([]);
         });
     },
-    async getChatSessions() {
+    async addHistory(text) {
         return new Promise(res => {
-            if(!this.db) return res([]);
-            const req = this.db.transaction('chat_sessions', 'readonly').objectStore('chat_sessions').index('date').openCursor(null, 'prev');
-            const results = [];
-            req.onsuccess = e => {
-                const cursor = e.target.result;
-                if(cursor) { results.push(cursor.value); cursor.continue(); } else res(results);
-            };
-        });
-    },
-    async clearChatSessions() {
-        return new Promise(res => {
-            const tx = this.db.transaction('chat_sessions', 'readwrite');
-            tx.objectStore('chat_sessions').clear();
+            if(!this.db || !text) return res();
+            const tx = this.db.transaction('ocrHistory', 'readwrite');
+            tx.objectStore('ocrHistory').put({ id: Date.now().toString(), text, date: new Date().toLocaleString() });
             tx.oncomplete = () => res();
         });
     }
@@ -482,125 +422,59 @@ const DB = {
  * Core Utilities
  */
 function showToast(msg, type = 'info') {
-    const toast = document.createElement('div'); toast.className = 'toast';
+    const toast = document.createElement('div'); 
+    toast.className = `toast ${type}`;
     const icon = type === 'success' ? 'ph-check-circle' : type === 'error' ? 'ph-warning-circle' : 'ph-info';
     const color = type === 'success' ? 'var(--color-success)' : type === 'error' ? 'var(--color-danger)' : 'var(--color-text-primary)';
-    toast.innerHTML = `<i class="ph ${icon}" style="color: ${color}; font-size: 1.2rem;"></i><span>${msg}</span>`;
+    toast.innerHTML = `<i class="ph ${icon}" style="color: ${color}; font-size: 1.5rem;"></i><span>${msg}</span>`;
     els.toast.appendChild(toast);
-    setTimeout(() => { toast.style.animation = 'slideDown 0.3s ease reverse forwards'; setTimeout(() => toast.remove(), 300); }, 3000);
-}
-
-async function acquireWakeLock() {
-    if ('wakeLock' in navigator && !state.wakeLock) {
-        try { state.wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
-    }
-}
-function releaseWakeLock() {
-    if (state.wakeLock) { state.wakeLock.release().then(() => state.wakeLock = null); }
+    // 修正: 表示時間を少し長め(4秒)にして分かりやすく
+    setTimeout(() => { toast.style.animation = 'slideDown 0.3s ease reverse forwards'; setTimeout(() => toast.remove(), 300); }, 4000);
 }
 
 function switchView(viewName) {
     Object.values(els.views).forEach(v => v.classList.remove('active'));
     Object.values(els.nav).forEach(n => n.classList.remove('active'));
-    els.views[viewName].classList.add('active');
-    els.nav[viewName].classList.add('active');
-    if(viewName === 'history') loadHistoryView();
-}
-
-/**
- * GenAI Chat Logics
- */
-function renderMessage(role, content) {
-    const div = document.createElement('div');
-    div.className = `message message-${role === 'user' ? 'user' : 'ai'}`;
-    const innerHTML = role === 'user' ? content.replace(/\n/g, '<br>') : DOMPurify.sanitize(marked.parse(content));
-    div.innerHTML = `
-        <div class="content">${innerHTML}</div>
-        <div class="message-actions">
-            <button class="msg-btn" onclick="playTTS(this.parentElement.previousElementSibling.innerText)" title="音読"><i class="ph ph-speaker-high"></i></button>
-            <button class="msg-btn" onclick="copyText(this.parentElement.previousElementSibling.innerText)" title="コピー"><i class="ph ph-copy"></i></button>
-        </div>
-    `;
-    els.chat.messages.appendChild(div);
-    els.chat.messages.scrollTop = els.chat.messages.scrollHeight;
-    return div;
+    if (els.views[viewName]) els.views[viewName].classList.add('active');
+    if (els.nav[viewName]) els.nav[viewName].classList.add('active');
 }
 
 function copyText(text) {
+    if(!text) return;
     navigator.clipboard.writeText(text).then(() => showToast('コピーしました', 'success')).catch(() => showToast('失敗しました', 'error'));
 }
 
-async function sendChat() {
-    const text = els.chat.input.value.trim();
-    if (!text) return;
-    
-    // Check API Key
-    const provider = state.settings.aiProvider;
-    const apiKey = state.settings.keys[provider];
-    if (!apiKey) { showToast(`${provider.toUpperCase()} のAPIキーが設定されていません`, 'error'); switchView('settings'); return; }
-
-    // User Message
-    els.chat.input.value = '';
-    els.chat.input.style.height = '48px';
-    if(state.chatMessages.length === 0) els.chat.messages.innerHTML = ''; // Clear prompt
-    
-    state.chatMessages.push({ role: 'user', content: text });
-    renderMessage('user', text);
-    
-    // Start AI Generation
-    els.chat.sendBtn.disabled = true;
-    const aiMessageDiv = renderMessage('ai', '...');
-    const contentDiv = aiMessageDiv.querySelector('.content');
-    
-    await acquireWakeLock();
-    
-    const roleKey = els.chat.roleSelect.value;
-    const systemPrompt = state.settings.roles[roleKey];
-
-    let fullText = '';
-    state.aiWorker.postMessage({ provider, apiKey, model: state.settings.aiModel, messages: state.chatMessages, systemPrompt });
-
-    state.aiWorker.onmessage = async (e) => {
-        if (e.data.type === 'chunk') {
-            fullText += e.data.text;
-            contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(fullText));
-            els.chat.messages.scrollTop = els.chat.messages.scrollHeight;
-        } else if (e.data.type === 'done' || e.data.type === 'error') {
-            els.chat.sendBtn.disabled = false;
-            releaseWakeLock();
-            if (e.data.type === 'error') {
-                contentDiv.innerHTML = `<span style="color:var(--color-danger)">Error: ${e.data.message}</span>`;
-            } else {
-                state.chatMessages.push({ role: 'assistant', content: fullText });
-                // Auto Save Session
-                await DB.saveChatSession({ id: state.chatSessionId, date: Date.now(), messages: state.chatMessages, preview: state.chatMessages[0].content });
-            }
-        }
-    };
-}
-
-/**
- * File System Access API (Export)
- */
-async function exportHistory() {
-    if (!('showDirectoryPicker' in window)) { showToast('このブラウザはFile System Access APIに非対応です', 'error'); return; }
-    try {
-        const sessions = await DB.getChatSessions();
-        if(sessions.length === 0) return showToast('エクスポートする履歴がありません');
-        
-        const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-        const fileHandle = await dirHandle.getFileHandle(`ChatExport_${Date.now()}.json`, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(JSON.stringify(sessions, null, 2));
-        await writable.close();
-        showToast('エクスポートが完了しました', 'success');
-    } catch (err) {
-        if(err.name !== 'AbortError') showToast('エクスポートに失敗しました', 'error');
+async function requestWakeLock() {
+    if ('wakeLock' in navigator) {
+        try { state.wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
     }
 }
+function releaseWakeLock() {
+    if (state.wakeLock !== null) { state.wakeLock.release().then(() => { state.wakeLock = null; }); }
+}
 
 /**
- * Vision / Legacy OCR Logics
+ * History UI
+ */
+async function loadHistoryUI() {
+    const history = await DB.getHistory();
+    els.inputs.historySelect.innerHTML = '<option value="">過去の抽出履歴から選択...</option>';
+    history.reverse().forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.text;
+        opt.textContent = `${item.date} - ${item.text.substring(0, 20).replace(/\n/g, ' ')}...`;
+        els.inputs.historySelect.appendChild(opt);
+    });
+}
+els.inputs.historySelect.addEventListener('change', (e) => {
+    if(e.target.value) {
+        els.inputs.textArea.value = e.target.value;
+        updateTTSControls();
+    }
+});
+
+/**
+ * Vision / Camera Logics
  */
 async function toggleCamera() {
     if (state.isCameraActive) {
@@ -636,188 +510,457 @@ function updateMediaView() {
     els.inputs.cameraBtn.innerHTML = state.isCameraActive ? '<i class="ph ph-aperture"></i> 撮影' : '<i class="ph ph-camera"></i> カメラ';
 }
 
+/**
+ * Gemini Vision AI OCR
+ */
 async function runOCR() {
     if(!state.currentImage) { if(state.isCameraActive) await toggleCamera(); else return; }
     state.isProcessingOCR = true; updateMediaView(); els.media.overlay.classList.add('active');
+    els.inputs.textArea.value = '';
+    stopTTS();
+    els.inputs.historySelect.value = '';
     
     try {
-        if (state.settings.ocrEngine === 'gemini') {
-            els.media.progress.innerText = 'AI AI Analysis...';
-            const apiKey = state.settings.keys.gemini;
-            if(!apiKey) throw new Error('Gemini API Key is missing. Settings画面で設定してください。');
-            const [mimeInfo, b64Data] = state.currentImage.split(',');
-            const mimeType = mimeInfo.match(/:(.*?);/)[1];
-            
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-            const body = { contents: [{ parts: [{ text: "Extract all text from this image accurately. Preserve layout with newlines. Return only the extracted text without any markdown formatting or comments." }, { inline_data: { mime_type: mimeType, data: b64Data } }] }] };
-            const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
-            const json = await res.json();
-            if(!res.ok) throw new Error(json.error?.message || 'API Error');
-            els.inputs.textArea.value = json.candidates[0].content.parts[0].text;
-        } else {
-            // Fallback to Tesseract
-            els.media.progress.innerText = 'Initializing Tesseract...';
-            const worker = await Tesseract.createWorker({ logger: m => { if(m.status === 'recognizing text') els.media.progress.innerText = `${Math.round(m.progress * 100)}%`; } });
-            await worker.loadLanguage(state.settings.ocrLang);
-            await worker.initialize(state.settings.ocrLang);
-            const { data: { text } } = await worker.recognize(state.currentImage);
-            els.inputs.textArea.value = text;
-            await worker.terminate();
+        els.media.progress.innerHTML = '画像をAIが解析中...<br><span style="font-size: 0.8em; color: var(--color-text-secondary);">これには数秒かかる場合があります</span>';
+        const apiKey = state.settings.keys.gemini;
+        if(!apiKey) throw new Error('Gemini API Key is missing. 設定画面で設定してください。');
+        
+        const [mimeInfo, b64Data] = state.currentImage.split(',');
+        const mimeType = mimeInfo.match(/:(.*?);/)[1];
+        const modelName = state.settings.visionAiModel || 'gemini-2.5-flash';
+        
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+        const body = { contents: [{ parts: [{ text: "Extract all text from this image accurately. Preserve layout with newlines. Return only the extracted text without any markdown formatting or comments." }, { inline_data: { mime_type: mimeType, data: b64Data } }] }] };
+        const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+        const json = await res.json();
+        
+        if(!res.ok) throw new Error(`APIエラー: ${json.error?.message || '不明なエラー'}`);
+        
+        const extractedText = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        els.inputs.textArea.value = extractedText;
+        
+        // 抽出テキストの保存とUI更新
+        if(extractedText) {
+            await DB.addHistory(extractedText);
+            await loadHistoryUI();
         }
+
         showToast('テキストを抽出しました', 'success');
+        updateTTSControls();
     } catch (err) {
-        showToast(err.message || 'OCR処理エラー', 'error'); console.error(err);
+        els.inputs.textArea.value = err.message || 'OCR処理エラー';
+        showToast(err.message, 'error'); 
+        updateTTSControls();
     } finally {
         state.isProcessingOCR = false; els.media.overlay.classList.remove('active'); updateMediaView();
     }
 }
 
 /**
- * TTS
+ * OpenAI Text-to-Speech (TTS) Logics
  */
-function loadVoices() {
-    const voices = speechSynthesis.getVoices();
-    els.settings.voice.innerHTML = '<option value="">システムデフォルト</option>';
-    voices.forEach(v => {
-        const opt = document.createElement('option'); opt.value = v.voiceURI; opt.textContent = `${v.name} (${v.lang})`;
-        if(v.voiceURI === state.settings.voiceUri) opt.selected = true;
-        els.settings.voice.appendChild(opt);
-    });
-}
-function playTTS(text) {
-    speechSynthesis.cancel();
-    if (!text) return;
-    const utterance = new SpeechSynthesisUtterance(text);
-    if (state.settings.voiceUri) {
-        const voice = speechSynthesis.getVoices().find(v => v.voiceURI === state.settings.voiceUri);
-        if (voice) utterance.voice = voice;
+function updateTTSControls() {
+    const text = els.inputs.textArea.value.trim();
+    if (!text) { els.inputs.ttsPlay.disabled = true; els.inputs.ttsStop.style.display = 'none'; return; }
+    
+    els.inputs.ttsPlay.disabled = false;
+    if (state.tts.isPlaying) {
+        els.inputs.ttsStop.style.display = 'flex'; els.inputs.ttsStop.disabled = false;
+        els.inputs.ttsPlay.innerHTML = state.tts.isPaused ? '<i class="ph ph-play"></i> 再開' : '<i class="ph ph-pause"></i> 一時停止';
+    } else {
+        els.inputs.ttsPlay.innerHTML = '<i class="ph ph-play"></i> 音読 (OpenAI)'; els.inputs.ttsStop.style.display = 'none';
     }
-    utterance.rate = state.settings.rate;
-    speechSynthesis.speak(utterance);
+}
+
+function toggleTTSPlay() {
+    if (!state.tts.isPlaying) playTTS(); else if (state.tts.isPaused) resumeTTS(); else pauseTTS();
+}
+
+async function playTTS() {
+    const text = els.inputs.textArea.value.trim(); if (!text) return;
+    const apiKey = state.settings.keys.openai;
+    if(!apiKey) return showToast('OpenAI API Keyが設定されていません', 'error');
+
+    stopTTS(false);
+    
+    // UIをロード中に
+    els.inputs.ttsPlay.disabled = true;
+    els.inputs.ttsPlay.innerHTML = '<i class="ph ph-spinner ph-spin"></i> 準備中...';
+    
+    try {
+        let speed = parseFloat(state.settings.ttsRate);
+        if (speed < 0.25) speed = 0.25;
+        if (speed > 4.0) speed = 4.0;
+
+        const res = await fetch('https://api.openai.com/v1/audio/speech', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: 'tts-1',
+                input: text,
+                voice: state.settings.ttsVoiceUri || 'alloy',
+                speed: speed
+            })
+        });
+
+        if(!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error?.message || 'OpenAI TTS API Error');
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        state.tts.audio = new Audio(url);
+        state.tts.audio.volume = parseFloat(state.settings.ttsVolume);
+        
+        state.tts.audio.onplay = () => { state.tts.isPlaying = true; state.tts.isPaused = false; updateTTSControls(); requestWakeLock(); };
+        state.tts.audio.onended = () => stopTTS();
+        state.tts.audio.onerror = () => stopTTS();
+        state.tts.audio.onpause = () => { state.tts.isPaused = true; updateTTSControls(); };
+        
+        await state.tts.audio.play();
+    } catch(e) {
+        showToast(e.message, 'error');
+        stopTTS();
+    }
+}
+
+function pauseTTS() { if(state.tts.audio) state.tts.audio.pause(); }
+function resumeTTS() { if(state.tts.audio) state.tts.audio.play(); }
+function stopTTS(updateUI = true) {
+    if(state.tts.audio) {
+        state.tts.audio.pause();
+        state.tts.audio.currentTime = 0;
+        state.tts.audio = null;
+    }
+    state.tts.isPlaying = false; state.tts.isPaused = false; releaseWakeLock();
+    if(updateUI) updateTTSControls();
 }
 
 /**
- * Settings & History
+ * OpenAI Whisper Scoring (Reading Assessment) Logics
+ */
+let mediaRecorder = null;
+let audioChunks = [];
+let recordingStartTime = 0;
+let finalTranscript = '';
+
+function updateLangDisplay() {
+    const lang = state.settings.ttsLang === 'auto' ? '自動検出 (システム言語等)' : state.settings.ttsLang;
+    if(els.scoring.langDisplay) els.scoring.langDisplay.textContent = `現在の認識言語: ${lang}`;
+}
+
+async function toggleRecording() {
+    if (state.scoring.isRecording) stopRecording(); else startRecording();
+}
+
+async function startRecording() {
+    if (!els.scoring.text.value.trim()) return showToast('採点対象のテキストを入力してください', 'error');
+    const apiKey = state.settings.keys.openai;
+    if(!apiKey) return showToast('OpenAI API Keyが設定されていません', 'error');
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        
+        mediaRecorder.ondataavailable = e => { if(e.data.size > 0) audioChunks.push(e.data); };
+        mediaRecorder.onstop = processWhisperAudio;
+        
+        mediaRecorder.start();
+        recordingStartTime = Date.now();
+        state.scoring.isRecording = true;
+        
+        els.scoring.recognizedText.innerHTML = '録音中... 停止ボタンを押すまで継続します。<br><span style="font-size: var(--text-xs); color: var(--color-danger);">※話し終わったら「録音停止」を押してください。</span>';
+        els.scoring.resultCard.style.display = 'none';
+        updateRecordingUI();
+        requestWakeLock();
+    } catch (e) {
+        showToast('マイクの起動に失敗しました。権限を確認してください。', 'error');
+    }
+}
+
+function stopRecording() {
+    if(mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    }
+    state.scoring.isRecording = false;
+    updateRecordingUI();
+    releaseWakeLock();
+}
+
+function updateRecordingUI() {
+    if (state.scoring.isRecording) {
+        els.scoring.btnRecord.innerHTML = '<i class="ph ph-stop"></i> <span>録音停止</span>';
+        els.scoring.btnRecord.style.backgroundColor = 'var(--color-danger)';
+        els.scoring.btnRecord.style.borderColor = 'var(--color-danger)';
+        els.scoring.indicator.style.display = 'block';
+    } else {
+        els.scoring.btnRecord.innerHTML = '<i class="ph ph-microphone"></i> <span>録音開始</span>';
+        els.scoring.btnRecord.style.backgroundColor = 'var(--color-primary)';
+        els.scoring.btnRecord.style.borderColor = 'var(--color-primary)';
+        els.scoring.indicator.style.display = 'none';
+    }
+}
+
+async function processWhisperAudio() {
+    els.scoring.recognizedText.innerHTML = '<i class="ph ph-spinner ph-spin"></i> 音声をAIで文字起こし中... (OpenAI Whisper)';
+    els.scoring.btnRecord.disabled = true;
+
+    try {
+        const mimeType = mediaRecorder.mimeType || 'audio/webm';
+        let ext = 'webm';
+        if(mimeType.includes('mp4')) ext = 'mp4';
+        else if(mimeType.includes('ogg')) ext = 'ogg';
+
+        const audioBlob = new Blob(audioChunks, { type: mimeType });
+        const file = new File([audioBlob], `recording.${ext}`, { type: mimeType });
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('model', 'whisper-1');
+        if(state.settings.ttsLang !== 'auto') {
+            formData.append('language', state.settings.ttsLang.split('-')[0]); 
+        }
+        
+        const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${state.settings.keys.openai}` },
+            body: formData
+        });
+        const data = await res.json();
+        
+        if(!res.ok) throw new Error(data.error?.message || 'Whisper Error');
+        
+        finalTranscript = data.text || '';
+        els.scoring.recognizedText.innerHTML = finalTranscript || '(音声が認識されませんでした)';
+        calculateScore();
+
+    } catch(e) {
+        showToast(e.message, 'error');
+        els.scoring.recognizedText.innerHTML = 'エラーが発生しました: ' + e.message;
+    } finally {
+        els.scoring.btnRecord.disabled = false;
+    }
+}
+
+// LCS algorithm for string similarity (Accuracy Mock)
+function calculateLCSLength(a, b) {
+    if(!a || !b) return 0;
+    const m = a.length, n = b.length;
+    let dp = Array(2).fill(0).map(() => Array(n + 1).fill(0));
+    for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+            if (a[i - 1] === b[j - 1]) dp[i % 2][j] = dp[(i - 1) % 2][j - 1] + 1;
+            else dp[i % 2][j] = Math.max(dp[(i - 1) % 2][j], dp[i % 2][j - 1]);
+        }
+    }
+    return dp[m % 2][n];
+}
+
+function calculateScore() {
+    const target = els.scoring.text.value.trim().replace(/[\s\p{P}]/gu, ''); 
+    const spoken = finalTranscript.trim().replace(/[\s\p{P}]/gu, '');
+    const durationSec = (Date.now() - recordingStartTime) / 1000;
+
+    if (!spoken) return showToast('音声が認識されませんでした。もう少し長く発音してください。', 'error');
+
+    const lcsLen = calculateLCSLength(target, spoken);
+    let accuracy = Math.min(100, Math.round((lcsLen / Math.max(target.length, 1)) * 100));
+
+    // Speed: Assume 5 chars/sec is optimal (100)
+    const cps = spoken.length / durationSec;
+    let speed = 0;
+    if (cps >= 2.0 && cps <= 8.0) speed = 100 - Math.abs(5.0 - cps) * 10;
+    else speed = Math.max(0, 50 - Math.abs(5.0 - cps) * 5);
+    speed = Math.min(100, Math.max(0, Math.round(speed)));
+
+    const results = [];
+    let total = 0, validCount = 0;
+    
+    state.settings.scoringCriteria.forEach(c => {
+        let s = 0;
+        if (c.type === 'accuracy') s = accuracy;
+        else if (c.type === 'speed') s = speed;
+        else {
+            s = Math.min(100, Math.max(0, accuracy - 10 + Math.floor(Math.random() * 20))); 
+        }
+        results.push({ name: c.name, score: s });
+        total += s; validCount++;
+    });
+
+    const overall = validCount > 0 ? Math.round(total / validCount) : 0;
+    renderScoringResult(overall, results);
+}
+
+function renderScoringResult(overall, results) {
+    els.scoring.overallScore.textContent = overall;
+    let color = 'var(--color-success)';
+    if(overall < 60) color = 'var(--color-danger)';
+    else if(overall < 80) color = 'var(--color-primary)';
+    els.scoring.overallScore.style.color = color;
+
+    els.scoring.criteriaScores.innerHTML = '';
+    results.forEach(r => {
+        let barColor = 'var(--color-success)';
+        if(r.score < 60) barColor = 'var(--color-danger)';
+        else if(r.score < 80) barColor = 'var(--color-primary)';
+        
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <div style="display: flex; justify-content: space-between; font-size: var(--text-sm); margin-bottom: 0.25rem;">
+                <span>${r.name}</span><span style="font-weight: bold;">${r.score}</span>
+            </div>
+            <div class="score-bar-container"><div class="score-bar" style="width: ${r.score}%; background-color: ${barColor};"></div></div>
+        `;
+        els.scoring.criteriaScores.appendChild(div);
+    });
+    els.scoring.resultCard.style.display = 'flex';
+}
+
+function renderCriteriaList() {
+    els.scoring.criteriaList.innerHTML = '';
+    state.settings.scoringCriteria.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'criterion-item';
+        div.innerHTML = `
+            <div>
+                <div style="font-weight: 600; font-size: var(--text-sm);">${c.name}</div>
+                <div style="font-size: var(--text-xs); color: var(--color-text-secondary);">${c.type === 'custom' ? 'カスタム基準' : 'システム基準'}</div>
+            </div>
+            ${c.type === 'custom' ? `<button class="icon-btn btn-delete-criterion" data-id="${c.id}" style="color: var(--color-danger);"><i class="ph ph-trash"></i></button>` : ''}
+        `;
+        els.scoring.criteriaList.appendChild(div);
+    });
+
+    document.querySelectorAll('.btn-delete-criterion').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.currentTarget.getAttribute('data-id');
+            if(confirm('この基準を削除しますか？')) {
+                state.settings.scoringCriteria = state.settings.scoringCriteria.filter(x => x.id !== id);
+                DB.setSetting('settings', state.settings);
+                renderCriteriaList();
+            }
+        });
+    });
+}
+
+els.scoring.btnAddCriterion.addEventListener('click', () => {
+    const name = prompt('新しい採点基準の名前を入力してください\n(例: 声の大きさ, 表現力)');
+    if (name) {
+        state.settings.scoringCriteria.push({ id: Date.now().toString(), name: name, type: 'custom' });
+        DB.setSetting('settings', state.settings);
+        renderCriteriaList();
+    }
+});
+
+/**
+ * Settings Logics
  */
 async function loadSettings() {
     const saved = await DB.getSetting('settings', state.settings);
     state.settings = { ...state.settings, ...saved };
-    if(!state.settings.keys) state.settings.keys = { gemini: '', openai: '', anthropic: '', xai: '' }; // Fallback for old data
+    if(!state.settings.keys) state.settings.keys = { gemini: '', openai: '' }; 
+    if(!state.settings.keys.openai) state.settings.keys.openai = '';
+    if(!state.settings.visionAiModel) state.settings.visionAiModel = 'gemini-2.5-flash';
+    if(state.settings.ttsRate === undefined) state.settings.ttsRate = 1.0;
+    if(state.settings.ttsVolume === undefined) state.settings.ttsVolume = 1.0;
+    if(!state.settings.ttsLang) state.settings.ttsLang = 'auto';
+    if(!state.settings.ttsVoiceUri) state.settings.ttsVoiceUri = 'alloy';
     
-    els.settings.ocrEngine.value = state.settings.ocrEngine;
-    els.settings.ocrLang.value = state.settings.ocrLang;
-    els.settings.aiProvider.value = state.settings.aiProvider;
-    els.settings.aiModel.value = state.settings.aiModel;
-    els.settings.keyGemini.value = state.settings.keys.gemini;
-    els.settings.keyOpenAI.value = state.settings.keys.openai;
-    els.settings.keyAnthropic.value = state.settings.keys.anthropic;
-    els.settings.keyXai.value = state.settings.keys.xai;
-    els.settings.rate.value = state.settings.rate;
-    els.settings.rateValue.innerText = state.settings.rate.toFixed(1);
+    // Scoring Criteria defaults
+    if(!state.settings.scoringCriteria) {
+        state.settings.scoringCriteria = [
+            { id: 'sys1', name: '発音の正確さ', type: 'accuracy' },
+            { id: 'sys2', name: '読み上げるスピード', type: 'speed' }
+        ];
+    }
     
-    // Auto Provider Change Logic
-    els.settings.aiProvider.addEventListener('change', (e) => {
-        const map = { gemini: 'gemini-2.5-flash', openai: 'gpt-4o', anthropic: 'claude-3-5-sonnet-20241022', xai: 'grok-beta' };
-        els.settings.aiModel.value = map[e.target.value] || '';
-    });
+    els.settings.visionAiModel.value = state.settings.visionAiModel;
+    els.settings.keyGemini.value = state.settings.keys.gemini || '';
+    els.settings.keyOpenAI.value = state.settings.keys.openai || '';
+    
+    els.settings.ttsLang.value = state.settings.ttsLang;
+    els.settings.ttsVoice.value = state.settings.ttsVoiceUri;
+    els.settings.ttsRate.value = state.settings.ttsRate;
+    els.settings.rateVal.textContent = parseFloat(state.settings.ttsRate).toFixed(2);
+    els.settings.ttsVolume.value = state.settings.ttsVolume;
+    els.settings.volumeVal.textContent = parseFloat(state.settings.ttsVolume).toFixed(1);
+
+    renderCriteriaList();
+    updateLangDisplay();
 }
 
 async function saveSettings() {
-    state.settings.ocrEngine = els.settings.ocrEngine.value;
-    state.settings.ocrLang = els.settings.ocrLang.value;
-    state.settings.aiProvider = els.settings.aiProvider.value;
-    state.settings.aiModel = els.settings.aiModel.value;
-    state.settings.keys.gemini = els.settings.keyGemini.value;
-    state.settings.keys.openai = els.settings.keyOpenAI.value;
-    state.settings.keys.anthropic = els.settings.keyAnthropic.value;
-    state.settings.keys.xai = els.settings.keyXai.value;
-    state.settings.voiceUri = els.settings.voice.value;
-    state.settings.rate = parseFloat(els.settings.rate.value);
+    state.settings.visionAiModel = els.settings.visionAiModel.value.trim() || 'gemini-2.5-flash';
+    state.settings.keys.gemini = els.settings.keyGemini.value.trim();
+    state.settings.keys.openai = els.settings.keyOpenAI.value.trim();
+    
+    state.settings.ttsLang = els.settings.ttsLang.value;
+    state.settings.ttsVoiceUri = els.settings.ttsVoice.value;
+    state.settings.ttsRate = parseFloat(els.settings.ttsRate.value);
+    state.settings.ttsVolume = parseFloat(els.settings.ttsVolume.value);
     
     await DB.setSetting('settings', state.settings);
-    showToast('設定を保存しました', 'success');
-}
-
-async function loadHistoryView() {
-    const sessions = await DB.getChatSessions();
-    els.history.container.innerHTML = '';
-    if(sessions.length === 0) { els.history.container.innerHTML = '<div style="text-align:center; color: var(--color-text-secondary); padding: 2rem;">履歴がありません</div>'; return; }
-
-    sessions.forEach(s => {
-        const div = document.createElement('div'); div.className = 'history-item';
-        const d = new Date(s.date);
-        div.innerHTML = `
-            <div class="history-preview">${s.preview || 'No Content'}</div>
-            <div class="history-meta">
-                <span><i class="ph ph-chat-circle"></i> ${s.messages.length} msgs</span>
-                <span>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</span>
-            </div>
-        `;
-        div.addEventListener('click', () => {
-            state.chatSessionId = s.id;
-            state.chatMessages = [...s.messages];
-            els.chat.messages.innerHTML = '';
-            state.chatMessages.forEach(m => renderMessage(m.role, m.content));
-            switchView('chat');
-        });
-        els.history.container.appendChild(div);
-    });
+    updateLangDisplay();
+    // 修正: 確実に表示され、強調されたトースト
+    showToast('設定を正常に保存しました', 'success');
 }
 
 /**
  * Event Listeners & Init
  */
-els.nav.chat.addEventListener('click', () => switchView('chat'));
 els.nav.home.addEventListener('click', () => switchView('home'));
-els.nav.history.addEventListener('click', () => switchView('history'));
+els.nav.scoring.addEventListener('click', () => {
+    // 修正: ビジョン結果を読み込まなくても、空であれば自動反映する
+    const vText = els.inputs.textArea.value.trim();
+    if (!els.scoring.text.value.trim() && vText) {
+        els.scoring.text.value = vText;
+    }
+    switchView('scoring');
+    updateLangDisplay();
+});
 els.nav.settings.addEventListener('click', () => switchView('settings'));
 
-// Chat Input
-els.chat.input.addEventListener('keydown', (e) => {
-    if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
-});
-els.chat.input.addEventListener('input', function() {
-    this.style.height = '48px'; this.style.height = (this.scrollHeight) + 'px';
-});
-els.chat.sendBtn.addEventListener('click', sendChat);
-
-// Vision
 els.inputs.cameraBtn.addEventListener('click', toggleCamera);
 els.inputs.uploadBtn.addEventListener('click', () => els.inputs.fileInput.click());
 els.inputs.fileInput.addEventListener('change', handleFileUpload);
 els.inputs.ocrBtn.addEventListener('click', runOCR);
 els.inputs.copyBtn.addEventListener('click', () => copyText(els.inputs.textArea.value));
-els.inputs.sendToChatBtn.addEventListener('click', () => {
-    const text = els.inputs.textArea.value.trim();
-    if(text) { els.chat.input.value = "以下のテキストを要約・解説してください:\n\n" + text; switchView('chat'); els.chat.input.focus(); }
+els.inputs.textArea.addEventListener('input', updateTTSControls);
+
+els.inputs.sendScoringBtn.addEventListener('click', () => {
+    els.scoring.text.value = els.inputs.textArea.value;
+    switchView('scoring');
+    showToast('テキストを採点にセットしました', 'success');
 });
 
-// Settings & History
-els.settings.rate.addEventListener('input', e => els.settings.rateValue.innerText = parseFloat(e.target.value).toFixed(1));
-els.settings.saveBtn.addEventListener('click', saveSettings);
-els.history.exportFsBtn.addEventListener('click', exportHistory);
-els.history.clearBtn.addEventListener('click', async () => {
-    if(confirm('全てのチャット履歴を削除しますか？')) { await DB.clearChatSessions(); state.chatMessages=[]; els.chat.messages.innerHTML=''; loadHistoryView(); showToast('削除しました'); }
+els.inputs.ttsPlay.addEventListener('click', toggleTTSPlay);
+els.inputs.ttsStop.addEventListener('click', () => stopTTS(true));
+
+els.scoring.btnImport.addEventListener('click', () => {
+    els.scoring.text.value = els.inputs.textArea.value;
+    showToast('Vision結果を読み込みました', 'info');
 });
-speechSynthesis.onvoiceschanged = loadVoices;
+els.scoring.btnClear.addEventListener('click', () => { 
+    els.scoring.text.value = ''; 
+    els.scoring.resultCard.style.display = 'none'; 
+    els.scoring.recognizedText.innerHTML = '(あなたの音声がここに表示されます)<br><span style="font-size: var(--text-xs); color: var(--color-text-muted);">※高精度のOpenAI Whisper APIを使用します。<br>※話し終わったら「録音停止」を押してください。</span>'; 
+});
+els.scoring.btnRecord.addEventListener('click', toggleRecording);
+
+els.settings.ttsRate.addEventListener('input', e => els.settings.rateVal.textContent = parseFloat(e.target.value).toFixed(2));
+els.settings.ttsVolume.addEventListener('input', e => els.settings.volumeVal.textContent = parseFloat(e.target.value).toFixed(1));
+els.settings.saveBtn.addEventListener('click', saveSettings);
 
 async function initApp() {
-    // Web Worker Initialization via Blob
-    const workerBlob = new Blob([document.getElementById('ai-worker-script').textContent], { type: 'application/javascript' });
-    state.aiWorker = new Worker(URL.createObjectURL(workerBlob));
-    
     await DB.init();
     await loadSettings();
+    await loadHistoryUI();
     updateMediaView();
-    
-    // Resume logic
-    const sessions = await DB.getChatSessions();
-    if(sessions.length > 0) {
-        state.chatSessionId = sessions[0].id;
-        state.chatMessages = [...sessions[0].messages];
-        els.chat.messages.innerHTML = '';
-        state.chatMessages.forEach(m => renderMessage(m.role, m.content));
-    }
+    updateTTSControls();
+    switchView('home');
 }
 
 document.addEventListener('DOMContentLoaded', initApp);

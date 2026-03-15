@@ -2,557 +2,826 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ろうどく チャレンジ！</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts: Zen Maru Gothic -->
-    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Obsidian Terminal (GenAI Chat v2.0)</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Tesseract.js (Local OCR) -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <!-- Markdown Parser & DOM Purify -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
 
     <style>
+        /* ============================================
+           DESIGN SYSTEM - Obsidian Terminal
+           GenAI Chat App v2.0 -> Applied to Vision Reader
+           ============================================ */
+
+        /* ── 1. Color Tokens ── */
+        :root {
+            /* Backgrounds */
+            --color-bg-deep:       #0D0F14;  
+            --color-bg-surface:    #161920;  
+            --color-bg-elevated:   #1E2433;  
+
+            /* Borders */
+            --color-border:        #2A2D36;
+            --color-border-focus:  #4A4F5E;
+
+            /* Text */
+            --color-text-primary:  #E8E4F0;
+            --color-text-secondary:#6B7280;
+            --color-text-muted:    #3D4251;
+
+            /* Accents */
+            --color-primary:       #8B5CF6;
+            --color-primary-hover: #7C3AED;
+            --color-danger:        #EF4444;
+            --color-success:       #10B981;
+
+            /* ── 2. Typography ── */
+            --font-display: 'Syne',        sans-serif;  
+            --font-body:    'DM Sans',     sans-serif;  
+            --font-mono:    'JetBrains Mono', monospace; 
+
+            --text-xs:   0.75rem;   
+            --text-sm:   0.875rem;  
+            --text-base: 1rem;      
+            --text-lg:   1.125rem;  
+            --text-xl:   1.375rem;  
+        }
+
+        /* ── Base Styles ── */
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         body {
-            font-family: 'Zen Maru Gothic', sans-serif;
-            background-color: #fdfbf7;
-            background-image: radial-gradient(#ffe0b2 2px, transparent 2px);
-            background-size: 30px 30px;
+            background-color: var(--color-bg-deep);
+            color: var(--color-text-primary);
+            font-family: var(--font-body);
+            line-height: 1.5;
+            overflow: hidden;
         }
-        .btn-bounce:active {
-            transform: scale(0.95);
+        #app { display: flex; flex-direction: column; height: 100dvh; width: 100vw; }
+
+        /* ── Header ── */
+        header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1rem; background-color: var(--color-bg-surface);
+            border-bottom: 1px solid var(--color-border); z-index: 10;
         }
-        .loading-dot::after {
-            content: '';
-            animation: dots 1.5s steps(4, end) infinite;
+        header h1 { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; letter-spacing: -0.02em; }
+        .header-actions { display: flex; gap: 0.5rem; }
+        .icon-btn {
+            background: none; border: none; color: var(--color-text-secondary);
+            font-size: 1.5rem; cursor: pointer; padding: 0.5rem; border-radius: 0.5rem;
+            transition: all 0.2s ease; display: flex; align-items: center; justify-content: center;
         }
-        @keyframes dots {
-            0%, 20% { content: ''; }
-            40% { content: '.'; }
-            60% { content: '..'; }
-            80%, 100% { content: '...'; }
-        }
+        .icon-btn:hover, .icon-btn.active { color: var(--color-text-primary); background-color: var(--color-bg-elevated); }
+
+        /* ── Main Views ── */
+        main { flex: 1; overflow-y: auto; padding: 1rem; position: relative; }
+        .view { display: none; flex-direction: column; gap: 1.5rem; height: 100%; }
+        .view.active { display: flex; }
+
+        /* ── Components ── */
+        .card { background-color: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: 1rem; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+        .section-title { font-size: var(--text-sm); color: var(--color-text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+        
+        /* Buttons */
+        .btn { display: flex; align-items: center; justify-content: center; gap: 0.5rem; background-color: var(--color-bg-elevated); color: var(--color-text-primary); border: 1px solid var(--color-border); padding: 0.75rem 1rem; border-radius: 0.5rem; font-family: var(--font-body); font-size: var(--text-sm); font-weight: 500; cursor: pointer; transition: all 0.2s; min-height: 48px; }
+        .btn:hover:not(:disabled) { background-color: var(--color-border); }
+        .btn-primary { background-color: var(--color-primary); border-color: var(--color-primary); color: white; }
+        .btn-primary:hover:not(:disabled) { background-color: var(--color-primary-hover); border-color: var(--color-primary-hover); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Forms */
+        .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        label { font-size: var(--text-sm); color: var(--color-text-secondary); }
+        select, input[type="range"], input[type="text"], input[type="password"] { background-color: var(--color-bg-elevated); color: var(--color-text-primary); border: 1px solid var(--color-border); padding: 0.75rem; border-radius: 0.5rem; font-family: var(--font-body); font-size: var(--text-base); outline: none; transition: border-color 0.2s; }
+        input[type="text"]:focus, input[type="password"]:focus, select:focus { border-color: var(--color-primary); }
+        input[type="range"] { padding: 0; accent-color: var(--color-primary); }
+        
+        textarea { width: 100%; background-color: var(--color-bg-elevated); color: var(--color-text-primary); border: 1px solid var(--color-border); border-radius: 0.75rem; padding: 1rem; font-family: var(--font-body); font-size: var(--text-base); resize: none; outline: none; transition: border-color 0.2s; }
+        textarea:focus { border-color: var(--color-primary); }
+
+        /* ── Chat View (GenAI v2.0) ── */
+        #view-chat { padding: 0; }
+        #chat-messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1.5rem; scroll-behavior: smooth; }
+        .message { max-width: 90%; padding: 1rem; border-radius: 1rem; position: relative; word-break: break-word; line-height: 1.6; }
+        .message p { margin-bottom: 0.75rem; } .message p:last-child { margin-bottom: 0; }
+        .message pre { background-color: #000; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-top: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); }
+        .message code { font-family: var(--font-mono); font-size: var(--text-sm); background-color: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 0.3rem; }
+        .message-user { align-self: flex-end; background-color: var(--color-primary); color: white; border-bottom-right-radius: 0.25rem; }
+        .message-ai { align-self: flex-start; background-color: var(--color-bg-surface); border: 1px solid var(--color-border); border-bottom-left-radius: 0.25rem; }
+        .message-actions { position: absolute; bottom: -1.75rem; right: 0; display: flex; gap: 0.5rem; opacity: 0; transition: opacity 0.2s; }
+        .message:hover .message-actions { opacity: 1; }
+        .msg-btn { background: var(--color-bg-elevated); border: 1px solid var(--color-border); border-radius: 0.25rem; color: var(--color-text-secondary); cursor: pointer; padding: 0.25rem 0.5rem; font-size: var(--text-sm); display:flex; align-items:center; gap:0.2rem; }
+        .msg-btn:hover { color: var(--color-text-primary); border-color: var(--color-primary); }
+        .chat-input-container { background-color: var(--color-bg-surface); border-top: 1px solid var(--color-border); padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+        .chat-input-row { display: flex; gap: 0.5rem; align-items: flex-end; }
+        #chat-input { min-height: 48px; height: 48px; max-height: 150px; flex: 1; border-radius: 1.5rem; padding: 0.75rem 1.25rem; }
+        .role-selector { font-size: var(--text-xs); background: none; border: none; color: var(--color-text-secondary); outline: none; margin-bottom: -0.25rem; padding-left: 0.5rem; }
+        
+        /* ── Vision View (Legacy Home) ── */
+        #media-container { position: relative; width: 100%; height: 250px; background-color: var(--color-bg-elevated); border-radius: 0.75rem; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--color-border-focus); }
+        #media-container img, #media-container video { width: 100%; height: 100%; object-fit: contain; display: none; }
+        #media-placeholder { display: flex; flex-direction: column; align-items: center; color: var(--color-text-secondary); gap: 0.5rem; }
+        .input-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .textarea-container { position: relative; flex: 1; display: flex; flex-direction: column; min-height:150px; }
+        #result-text { flex: 1; }
+        .copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; background-color: var(--color-bg-surface); border: 1px solid var(--color-border); color: var(--color-text-primary); padding: 0.4rem; border-radius: 0.4rem; cursor: pointer; font-size: 1.2rem; }
+
+        /* ── History List ── */
+        .history-list { display: flex; flex-direction: column; gap: 1rem; }
+        .history-item { display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background-color: var(--color-bg-surface); border-radius: 0.75rem; border: 1px solid var(--color-border); cursor: pointer; transition: border-color 0.2s; }
+        .history-item:hover { border-color: var(--color-border-focus); }
+        .history-preview { font-size: var(--text-sm); color: var(--color-text-primary); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .history-meta { font-size: var(--text-xs); color: var(--color-text-secondary); display: flex; justify-content: space-between; }
+        
+        /* ── Overlays & Toasts ── */
+        #loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(13, 15, 20, 0.8); backdrop-filter: blur(4px); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 50; border-radius: 1rem; }
+        #loading-overlay.active { display: flex; }
+        .spinner { width: 40px; height: 40px; border: 4px solid var(--color-border-focus); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        #toast-container { position: fixed; top: 5rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 0.5rem; z-index: 100; }
+        .toast { background-color: var(--color-bg-elevated); color: var(--color-text-primary); padding: 0.75rem 1.5rem; border-radius: 2rem; font-size: var(--text-sm); box-shadow: 0 4px 12px rgba(0,0,0,0.5); border: 1px solid var(--color-border); animation: slideDown 0.3s ease forwards; display: flex; align-items: center; gap: 0.5rem; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+        #file-input { display: none; }
     </style>
 </head>
-<body class="text-gray-800 min-h-screen py-8 px-4 flex flex-col items-center relative">
+<body>
 
-    <!-- 設定ボタン（大人向け） -->
-    <div class="absolute top-4 right-4 md:top-6 md:right-8 z-10">
-        <button id="settingsBtn" class="text-3xl hover:scale-110 transition drop-shadow-md bg-white rounded-full p-2 shadow-md border-2 border-gray-200" title="せってい">⚙️</button>
-    </div>
-
-    <!-- 設定モーダル -->
-    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-3xl p-6 max-w-md w-full mx-4 shadow-2xl relative border-4 border-gray-200 animate-fade-in-up">
-            <button id="closeSettingsBtn" class="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-3xl font-bold">&times;</button>
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">⚙️ せってい</h2>
-            <p class="text-sm text-red-500 font-bold mb-4">※おとなのひとが さわってね</p>
-            <p class="text-sm text-gray-600 mb-4 leading-relaxed">
-                Gemini APIキーを設定すると、自分のキーを利用してAI通信（gemini-2.5-flash）を行います。<br>
-                設定しない場合は、共有の通信先を利用します。
-            </p>
-            <input type="password" id="apiKeyInput" placeholder="APIキーを入力..." class="w-full p-3 border-2 border-gray-300 rounded-xl mb-4 focus:outline-none focus:border-blue-500 font-mono">
-            <div class="flex space-x-3">
-                <button id="saveSettingsBtn" class="flex-1 bg-blue-500 text-white font-bold py-3 rounded-xl shadow hover:bg-blue-600 transition btn-bounce">ほぞんする</button>
-                <button id="clearSettingsBtn" class="flex-1 bg-gray-200 text-gray-700 font-bold py-3 rounded-xl shadow hover:bg-gray-300 transition btn-bounce">キーをけす</button>
-            </div>
-            <p id="settingsMsg" class="text-center mt-4 text-sm font-bold hidden"></p>
+<div id="app">
+    <!-- Header -->
+    <header>
+        <h1>Obsidian Terminal</h1>
+        <div class="header-actions">
+            <button class="icon-btn active" id="nav-chat" title="チャット"><i class="ph ph-chat-teardrop-text"></i></button>
+            <button class="icon-btn" id="nav-home" title="Vision (OCR)"><i class="ph ph-camera"></i></button>
+            <button class="icon-btn" id="nav-history" title="履歴"><i class="ph ph-clock-counter-clockwise"></i></button>
+            <button class="icon-btn" id="nav-settings" title="設定"><i class="ph ph-gear"></i></button>
         </div>
-    </div>
+    </header>
 
-    <div class="max-w-2xl w-full mt-4">
-        <!-- ヘッダー -->
-        <header class="text-center mb-8">
-            <h1 class="text-4xl md:text-5xl font-black text-orange-500 drop-shadow-md mb-2">📖 ろうどく チャレンジ 🎤</h1>
-            <p class="text-lg text-orange-700 font-bold">AIせんせいが きみの ろうどくを きくよ！</p>
-        </header>
-
-        <!-- ステップ1：画像アップロード（教科書読み取り） -->
-        <section id="step-1" class="bg-white rounded-[2rem] shadow-xl p-6 md:p-8 mb-6 border-4 border-yellow-200 relative overflow-hidden">
-            <div class="absolute top-0 left-0 w-full h-3 bg-yellow-400"></div>
-            <h2 class="text-2xl font-bold text-yellow-600 mb-4 flex items-center">
-                <span class="text-3xl mr-2">1️⃣</span> きょうかしょの しゃしんをとろう
-            </h2>
-            <p class="text-gray-600 mb-6 font-medium">よみたい ページを カメラで うつしてね！</p>
-            
-            <label class="block w-full text-center bg-yellow-50 hover:bg-yellow-100 border-2 border-dashed border-yellow-400 rounded-2xl p-8 cursor-pointer transition mb-4">
-                <span class="text-5xl mb-2 block">📷</span>
-                <span class="text-yellow-700 font-bold text-lg">ここをおして しゃしんを えらぶ</span>
-                <input type="file" id="imageInput" accept="image/*" capture="environment" class="hidden">
-            </label>
-
-            <!-- OCRローディング -->
-            <div id="ocrLoading" class="hidden text-center text-yellow-600 font-bold py-8">
-                <div class="inline-block animate-spin text-4xl mb-4">✨</div>
-                <p class="text-xl">AIが もじを よみとっています<span class="loading-dot"></span></p>
+    <!-- 1. Chat View (GenAI v2.0) -->
+    <main id="view-chat" class="view active">
+        <div id="chat-messages">
+            <div style="text-align:center; color: var(--color-text-secondary); margin-top: 2rem; font-size: var(--text-sm);">
+                <i class="ph ph-magic-wand" style="font-size: 2rem; margin-bottom: 0.5rem;"></i><br>
+                チャットを開始してください
             </div>
-
-            <!-- OCR結果テキストエリア -->
-            <div id="ocrResultArea" class="hidden animate-fade-in-up">
-                <p class="text-sm text-gray-500 mb-2 font-bold">▼ よみとった ぶんしょう（まちがっていたら なおしてね）</p>
-                <textarea id="originalText" class="w-full h-40 p-4 border-2 border-yellow-300 rounded-xl focus:outline-none focus:border-yellow-500 text-lg leading-relaxed resize-none"></textarea>
-                <button id="nextToStep2" class="w-full mt-6 bg-yellow-500 text-white font-black text-xl py-4 rounded-full shadow-lg hover:bg-yellow-600 transition btn-bounce">
-                    これでOK！ つぎへすすむ ➡️
+        </div>
+        
+        <div class="chat-input-container">
+            <select id="chat-role-select" class="role-selector">
+                <option value="assistant">🤖 アシスタント</option>
+                <option value="programmer">💻 プログラマー</option>
+                <option value="marketer">📈 マーケター</option>
+                <option value="storyteller">📖 ストーリーテラー</option>
+            </select>
+            <div class="chat-input-row">
+                <textarea id="chat-input" placeholder="メッセージを入力... (Shift+Enterで改行)"></textarea>
+                <button class="btn btn-primary" id="btn-send-chat" style="min-height: 48px; border-radius: 50%; padding: 0 1rem;">
+                    <i class="ph-fill ph-paper-plane-right" style="font-size: 1.2rem;"></i>
                 </button>
             </div>
-        </section>
+        </div>
+    </main>
 
-        <!-- ステップ2：朗読（録音） -->
-        <section id="step-2" class="bg-white rounded-[2rem] shadow-xl p-6 md:p-8 mb-6 border-4 border-green-200 relative overflow-hidden hidden">
-            <div class="absolute top-0 left-0 w-full h-3 bg-green-400"></div>
-            <h2 class="text-2xl font-bold text-green-600 mb-4 flex items-center">
-                <span class="text-3xl mr-2">2️⃣</span> げんきよく よんでみよう
-            </h2>
-            
-            <div class="bg-green-50 p-4 rounded-xl mb-6">
-                <p class="text-sm text-green-700 font-bold mb-2">【よむ ぶんしょう】</p>
-                <p id="displayOriginalText" class="text-lg text-gray-800 leading-relaxed max-h-32 overflow-y-auto"></p>
+    <!-- 2. Vision / OCR View (Legacy Home) -->
+    <main id="view-home" class="view">
+        <h2 class="section-title">Vision Reader</h2>
+        <div class="card">
+            <div id="media-container">
+                <div id="media-placeholder">
+                    <i class="ph ph-image" style="font-size: 3rem;"></i>
+                    <span>画像を選択または撮影</span>
+                </div>
+                <img id="preview-img" alt="Preview">
+                <video id="camera-video" autoplay playsinline></video>
+                <div id="loading-overlay">
+                    <div class="spinner"></div>
+                    <div id="progress-text" style="font-family: var(--font-mono); font-size: var(--text-sm);">Processing...</div>
+                </div>
             </div>
-
-            <div class="flex flex-col items-center justify-center space-y-4 mb-6">
-                <button id="startRecordBtn" class="bg-red-500 text-white font-black text-2xl py-6 px-12 rounded-full shadow-lg hover:bg-red-600 transition btn-bounce flex items-center w-full justify-center">
-                    <span class="text-3xl mr-2">🎤</span> ろくおん スタート
-                </button>
-                <button id="stopRecordBtn" class="hidden bg-gray-600 text-white font-black text-xl py-4 px-12 rounded-full shadow-lg hover:bg-gray-700 transition btn-bounce w-full justify-center">
-                    ⏹️ おわる
-                </button>
+            <div class="input-actions">
+                <button class="btn" id="btn-camera"><i class="ph ph-camera"></i> カメラ</button>
+                <button class="btn" id="btn-upload"><i class="ph ph-upload-simple"></i> ファイル</button>
+                <input type="file" id="file-input" accept="image/*">
             </div>
-
-            <p id="recordingStatus" class="text-center text-red-500 font-bold text-xl hidden animate-pulse mb-4">
-                🔴 ろくおんちゅう... はっきり よんでね！
-            </p>
-
-            <textarea id="speechText" class="w-full h-32 p-4 border-2 border-green-300 rounded-xl bg-gray-50 text-gray-700 text-lg focus:outline-none hidden" placeholder="きみが よんだ ぶんしょうが ここに でるよ。" readonly></textarea>
-
-            <button id="submitBtn" class="w-full mt-6 bg-green-500 text-white font-black text-xl py-4 rounded-full shadow-lg hover:bg-green-600 transition btn-bounce hidden">
-                AIせんせいに さいてんしてもらう ✨
+            <button class="btn btn-primary" id="btn-ocr" disabled style="grid-column: span 2;">
+                <i class="ph ph-text-aa"></i> テキストを抽出
             </button>
-        </section>
+        </div>
+        <div class="textarea-container">
+            <textarea id="result-text" placeholder="抽出されたテキストがここに表示されます..."></textarea>
+            <button class="copy-btn" id="btn-copy" title="コピー"><i class="ph ph-copy"></i></button>
+        </div>
+        <button class="btn" id="btn-send-to-chat" style="margin-top: -0.5rem;">
+            <i class="ph ph-chat-circle-text"></i> このテキストをチャットに入力
+        </button>
+    </main>
 
-        <!-- ステップ3：採点結果 -->
-        <section id="step-3" class="bg-white rounded-[2rem] shadow-xl p-6 md:p-8 mb-6 border-4 border-blue-200 relative overflow-hidden hidden">
-            <div class="absolute top-0 left-0 w-full h-3 bg-blue-400"></div>
-            
-            <!-- 採点中ローディング -->
-            <div id="resultLoading" class="text-center text-blue-600 font-bold py-12">
-                <div class="text-6xl mb-6 animate-bounce">👩‍🏫</div>
-                <p class="text-2xl">AIせんせいが かんがえちゅう<span class="loading-dot"></span></p>
-                <p class="text-gray-500 mt-2">すこし まっててね！</p>
-            </div>
-
-            <!-- 結果表示エリア -->
-            <div id="resultContent" class="hidden">
-                <h2 class="text-3xl font-black text-blue-600 mb-6 text-center">🎉 けっか はっぴょう 🎉</h2>
-                
-                <div class="text-center mb-8 bg-gradient-to-br from-yellow-100 to-orange-100 py-8 rounded-3xl border-2 border-orange-200 shadow-inner">
-                    <p class="text-gray-600 font-bold mb-2">きみの とくてんは...</p>
-                    <div class="text-7xl font-black text-red-500 drop-shadow-md" id="scoreValue">
-                        --<span class="text-4xl text-gray-800">てん</span>
-                    </div>
-                </div>
-
-                <div class="space-y-4 mb-8">
-                    <!-- 正確さ -->
-                    <div class="bg-blue-50 p-5 rounded-2xl flex items-start border border-blue-100">
-                        <div class="text-3xl mr-4 mt-1">🎯</div>
-                        <div>
-                            <h3 class="font-black text-blue-800 text-lg mb-1">せいかくさ（ただしく よめたかな？）</h3>
-                            <p id="accuracyFeedback" class="text-gray-700 font-medium leading-relaxed"></p>
-                        </div>
-                    </div>
-                    <!-- 流暢さ -->
-                    <div class="bg-green-50 p-5 rounded-2xl flex items-start border border-green-100">
-                        <div class="text-3xl mr-4 mt-1">🌊</div>
-                        <div>
-                            <h3 class="font-black text-green-800 text-lg mb-1">スムーズさ（スラスラ よめたかな？）</h3>
-                            <p id="fluencyFeedback" class="text-gray-700 font-medium leading-relaxed"></p>
-                        </div>
-                    </div>
-                    <!-- 表現力（感情） -->
-                    <div class="bg-purple-50 p-5 rounded-2xl flex items-start border border-purple-100">
-                        <div class="text-3xl mr-4 mt-1">✨</div>
-                        <div>
-                            <h3 class="font-black text-purple-800 text-lg mb-1">ひょうげんりょく（きもちを こめて よめたかな？）</h3>
-                            <p id="expressionFeedback" class="text-gray-700 font-medium leading-relaxed"></p>
-                        </div>
-                    </div>
-                    <!-- 丁寧さ -->
-                    <div class="bg-teal-50 p-5 rounded-2xl flex items-start border border-teal-100">
-                        <div class="text-3xl mr-4 mt-1">🍀</div>
-                        <div>
-                            <h3 class="font-black text-teal-800 text-lg mb-1">ていねいさ（はっきり わかりやすく よめたかな？）</h3>
-                            <p id="politenessFeedback" class="text-gray-700 font-medium leading-relaxed"></p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 先生からのメッセージ -->
-                <div class="bg-pink-100 p-6 rounded-3xl border-4 border-pink-300 relative">
-                    <div class="absolute -top-6 -left-4 text-5xl">👩‍🏫</div>
-                    <h3 class="font-black text-pink-700 text-xl mb-3 text-center">せんせいからの メッセージ</h3>
-                    <p id="messageFeedback" class="text-gray-800 font-bold text-lg leading-relaxed"></p>
-                </div>
-
-                <button onclick="location.reload()" class="w-full mt-10 bg-blue-500 text-white font-black text-xl py-4 rounded-full shadow-lg hover:bg-blue-600 transition btn-bounce">
-                    🔄 もういちど チャレンジする！
+    <!-- 3. History View -->
+    <main id="view-history" class="view">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 class="section-title">Chat History</h2>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn" id="btn-export-fs" title="ローカル保存" style="min-height: auto; padding: 0.4rem 0.8rem; font-size: var(--text-xs);">
+                    <i class="ph ph-folder-simple-arrow-down"></i> Export
+                </button>
+                <button class="btn btn-danger" id="btn-clear-history" style="min-height: auto; padding: 0.4rem 0.8rem; font-size: var(--text-xs); background: none; border: 1px solid var(--color-danger); color: var(--color-danger);">
+                    <i class="ph ph-trash"></i>
                 </button>
             </div>
-        </section>
+        </div>
+        <div class="history-list" id="history-container">
+            <div style="text-align:center; color: var(--color-text-secondary); padding: 2rem;">履歴がありません</div>
+        </div>
+    </main>
 
-    </div>
+    <!-- 4. Settings View -->
+    <main id="view-settings" class="view">
+        <h2 class="section-title">Settings</h2>
+        
+        <!-- GenAI Settings -->
+        <div class="card">
+            <h3 class="section-title" style="color: var(--color-primary);">AI Engine & Models</h3>
+            <div class="form-group">
+                <label>Vision OCR エンジン</label>
+                <select id="setting-ocr-engine">
+                    <option value="tesseract">ローカル (Tesseract.js)</option>
+                    <option value="gemini">クラウド超高精度 (Gemini Vision)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>チャットプロバイダー</label>
+                <select id="setting-ai-provider">
+                    <option value="gemini">Google Gemini</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic (Claude)</option>
+                    <option value="xai">xAI (Grok)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>AI モデル (手動入力可)</label>
+                <input type="text" id="setting-ai-model" value="gemini-2.5-flash">
+            </div>
+        </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const WORKER_URL = 'https://green-credit-a6fb.ikymbiz.workers.dev';
+        <!-- API Keys -->
+        <div class="card">
+            <h3 class="section-title" style="color: var(--color-primary);">API Keys (Local Secure Storage)</h3>
+            <div class="form-group">
+                <label>Gemini API Key</label>
+                <input type="password" id="key-gemini" placeholder="AIzaSy...">
+            </div>
+            <div class="form-group">
+                <label>OpenAI API Key</label>
+                <input type="password" id="key-openai" placeholder="sk-...">
+            </div>
+            <div class="form-group">
+                <label>Anthropic API Key</label>
+                <input type="password" id="key-anthropic" placeholder="sk-ant-...">
+            </div>
+            <div class="form-group">
+                <label>xAI API Key</label>
+                <input type="password" id="key-xai" placeholder="xai-...">
+            </div>
+        </div>
 
-            // DOM要素
-            const step1 = document.getElementById('step-1');
-            const imageInput = document.getElementById('imageInput');
-            const ocrLoading = document.getElementById('ocrLoading');
-            const ocrResultArea = document.getElementById('ocrResultArea');
-            const originalText = document.getElementById('originalText');
-            const nextToStep2 = document.getElementById('nextToStep2');
+        <!-- Legacy OCR & TTS Settings -->
+        <div class="card">
+            <h3 class="section-title">Local OCR & TTS Settings</h3>
+            <div class="form-group">
+                <label>Tesseract OCR 認識言語</label>
+                <select id="setting-ocr-lang">
+                    <option value="jpn">日本語</option><option value="eng">英語</option><option value="jpn+eng" selected>日本語 + 英語</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>音声 (TTS)</label>
+                <select id="setting-voice"><option value="">システムデフォルト</option></select>
+            </div>
+            <div class="form-group">
+                <label>読み上げ速度: <span id="rate-value">1.0</span>x</label>
+                <input type="range" id="setting-rate" min="0.5" max="2.0" step="0.1" value="1.0">
+            </div>
+        </div>
 
-            const step2 = document.getElementById('step-2');
-            const displayOriginalText = document.getElementById('displayOriginalText');
-            const startRecordBtn = document.getElementById('startRecordBtn');
-            const stopRecordBtn = document.getElementById('stopRecordBtn');
-            const recordingStatus = document.getElementById('recordingStatus');
-            const speechText = document.getElementById('speechText');
-            const submitBtn = document.getElementById('submitBtn');
+        <button class="btn btn-primary" id="btn-save-settings">設定を保存</button>
+    </main>
+</div>
 
-            const step3 = document.getElementById('step-3');
-            const resultLoading = document.getElementById('resultLoading');
-            const resultContent = document.getElementById('resultContent');
-            const scoreValue = document.getElementById('scoreValue');
-            const accuracyFeedback = document.getElementById('accuracyFeedback');
-            const fluencyFeedback = document.getElementById('fluencyFeedback');
-            const expressionFeedback = document.getElementById('expressionFeedback');
-            const politenessFeedback = document.getElementById('politenessFeedback');
-            const messageFeedback = document.getElementById('messageFeedback');
+<div id="toast-container"></div>
 
-            // 設定用DOM要素
-            const settingsBtn = document.getElementById('settingsBtn');
-            const settingsModal = document.getElementById('settingsModal');
-            const closeSettingsBtn = document.getElementById('closeSettingsBtn');
-            const apiKeyInput = document.getElementById('apiKeyInput');
-            const saveSettingsBtn = document.getElementById('saveSettingsBtn');
-            const clearSettingsBtn = document.getElementById('clearSettingsBtn');
-            const settingsMsg = document.getElementById('settingsMsg');
+<!-- Web Worker Script for AI Communication (Blob) -->
+<script id="ai-worker-script" type="text/js-worker">
+    self.onmessage = async function(e) {
+        const { provider, apiKey, model, messages, systemPrompt } = e.data;
+        try {
+            let response;
+            if (provider === 'gemini') {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+                const body = { contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{text: m.content}] })) };
+                if (systemPrompt) body.system_instruction = { parts: [{text: systemPrompt}] };
+                response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            } else if (provider === 'openai' || provider === 'xai') {
+                const baseUrl = provider === 'xai' ? 'https://api.x.ai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
+                const apiMsgs = systemPrompt ? [{role: 'system', content: systemPrompt}, ...messages] : messages;
+                response = await fetch(baseUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, body: JSON.stringify({ model, messages: apiMsgs, stream: true }) });
+            } else if (provider === 'anthropic') {
+                // Note: Direct browser call might block due to CORS. Using proxy or official header pattern.
+                const url = 'https://api.anthropic.com/v1/messages';
+                response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify({ model, messages, system: systemPrompt, max_tokens: 4096, stream: true }) });
+            }
 
-            // 設定モーダルの制御
-            settingsBtn.addEventListener('click', () => {
-                apiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
-                settingsModal.classList.remove('hidden');
-                settingsMsg.classList.add('hidden');
-            });
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
 
-            closeSettingsBtn.addEventListener('click', () => {
-                settingsModal.classList.add('hidden');
-            });
-
-            saveSettingsBtn.addEventListener('click', () => {
-                const val = apiKeyInput.value.trim();
-                if (val) {
-                    localStorage.setItem('gemini_api_key', val);
-                    settingsMsg.textContent = 'ほぞんしました！';
-                    settingsMsg.className = 'text-center mt-4 text-sm font-bold text-green-600 block';
-                    setTimeout(() => settingsModal.classList.add('hidden'), 1000);
-                }
-            });
-
-            clearSettingsBtn.addEventListener('click', () => {
-                localStorage.removeItem('gemini_api_key');
-                apiKeyInput.value = '';
-                settingsMsg.textContent = 'キーをけしました！';
-                settingsMsg.className = 'text-center mt-4 text-sm font-bold text-red-600 block';
-            });
-
-            // ファイルをBase64に変換するヘルパー関数
-            const fileToBase64 = (file) => {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onload = () => resolve(reader.result);
-                    reader.onerror = error => reject(error);
-                });
-            };
-
-            // --- ステップ1: 画像からテキスト抽出 ---
-            imageInput.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                ocrLoading.classList.remove('hidden');
-                ocrResultArea.classList.add('hidden');
-                imageInput.parentElement.classList.add('hidden');
-
-                try {
-                    const base64Image = await fileToBase64(file);
-                    const prompt = "画像に書かれている日本語の文章を読み取って、テキストのみを出力してください。余計な説明やMarkdown記法は含めず、純粋な抽出テキストだけを返してください。";
-
-                    let responseText = "";
-                    const apiKey = localStorage.getItem('gemini_api_key');
-
-                    if (apiKey) {
-                        // APIキーがある場合は直接Gemini APIを叩く
-                        const match = base64Image.match(/^data:(.+);base64,(.+)$/);
-                        const mimeType = match ? match[1] : "image/jpeg";
-                        const dataStr = match ? match[2] : "";
-                        
-                        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                contents: [{
-                                    parts: [
-                                        { text: prompt },
-                                        { inline_data: { mime_type: mimeType, data: dataStr } }
-                                    ]
-                                }]
-                            })
-                        });
-                        if (!res.ok) throw new Error("Gemini API Error");
-                        const data = await res.json();
-                        responseText = data.candidates[0].content.parts[0].text;
-                    } else {
-                        // APIキーがない場合はWorkerを利用
-                        const res = await fetch(WORKER_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ prompt: prompt, image: base64Image })
-                        });
-                        if (!res.ok) throw new Error("API Network response was not ok");
-                        responseText = await res.text();
-                    }
-                    
-                    // Markdownブロック等が含まれていた場合の簡易整形
-                    let text = responseText.replace(/```(?:json)?/g, '').replace(/```/g, '').trim();
-                    originalText.value = text;
-                    
-                    ocrLoading.classList.add('hidden');
-                    ocrResultArea.classList.remove('hidden');
-                } catch (error) {
-                    console.error("OCR Error:", error);
-                    alert("しゃしんの よみとりに しっぱいしました。もういちど やってみてね！");
-                    ocrLoading.classList.add('hidden');
-                    imageInput.parentElement.classList.remove('hidden');
-                }
-            });
-
-            nextToStep2.addEventListener('click', () => {
-                const text = originalText.value.trim();
-                if (!text) {
-                    alert("ぶんしょうが ないみたい。しゃしんを とりなおすか、もじを い力してね！");
-                    return;
-                }
-                step1.classList.add('hidden');
-                step2.classList.remove('hidden');
-                displayOriginalText.innerText = text;
-            });
-
-            // --- ステップ2: 音声認識 (Web Speech API) ---
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            let recognition = null;
-
-            if (!SpeechRecognition) {
-                alert("ごめんなさい！このブラウザは おんせいロクオンに たいおうしていません。Chrome か Edge をつかってね！");
-            } else {
-                recognition = new SpeechRecognition();
-                recognition.lang = 'ja-JP';
-                recognition.continuous = true;
-                recognition.interimResults = true;
-
-                let finalTranscript = '';
-
-                recognition.onstart = () => {
-                    startRecordBtn.classList.add('hidden');
-                    stopRecordBtn.classList.remove('hidden');
-                    recordingStatus.classList.remove('hidden');
-                    speechText.classList.remove('hidden');
-                    submitBtn.classList.add('hidden');
-                    finalTranscript = '';
-                    speechText.value = '';
-                };
-
-                recognition.onresult = (event) => {
-                    let interimTranscript = '';
-                    for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        if (event.results[i].isFinal) {
-                            finalTranscript += event.results[i][0].transcript;
-                        } else {
-                            interimTranscript += event.results[i][0].transcript;
-                        }
-                    }
-                    speechText.value = finalTranscript + interimTranscript;
-                };
-
-                recognition.onerror = (event) => {
-                    console.error("Speech Recognition Error:", event.error);
-                    if (event.error === 'not-allowed') {
-                        alert("マイクが つかえないみたい。ブラウザの せっていを かくにんしてね！");
-                        stopRecordingUI();
-                    }
-                };
-
-                recognition.onend = () => {
-                    stopRecordingUI();
-                };
-
-                startRecordBtn.addEventListener('click', () => {
-                    try {
-                        recognition.start();
-                    } catch (e) {
-                        console.error(e);
-                    }
-                });
-
-                stopRecordBtn.addEventListener('click', () => {
-                    recognition.stop();
-                    stopRecordingUI();
-                });
-
-                function stopRecordingUI() {
-                    startRecordBtn.classList.remove('hidden');
-                    stopRecordBtn.classList.add('hidden');
-                    recordingStatus.classList.add('hidden');
-                    
-                    if (speechText.value.trim().length > 0) {
-                        submitBtn.classList.remove('hidden');
-                        startRecordBtn.innerHTML = '<span class="text-3xl mr-2">🔄</span> もういちど ろくおんする';
-                        startRecordBtn.classList.replace('bg-red-500', 'bg-orange-400');
-                        startRecordBtn.classList.replace('hover:bg-red-600', 'hover:bg-orange-500');
+            while(true) {
+                const { done, value } = await reader.read();
+                if(done) break;
+                buffer += decoder.decode(value, {stream: true});
+                const lines = buffer.split('\n');
+                buffer = lines.pop(); // Incomplete line
+                for(const line of lines) {
+                    if(line.startsWith('data: ') && line !== 'data: [DONE]') {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+                            let text = '';
+                            if (provider === 'gemini') text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                            else if (provider === 'anthropic') { if(data.type === 'content_block_delta') text = data.delta?.text || ''; }
+                            else text = data.choices?.[0]?.delta?.content || '';
+                            if (text) self.postMessage({ type: 'chunk', text });
+                        } catch(e) {}
                     }
                 }
             }
+            self.postMessage({ type: 'done' });
+        } catch(err) {
+            self.postMessage({ type: 'error', message: err.message });
+        }
+    };
+</script>
 
-            // --- ステップ3: GenAIで採点 ---
-            submitBtn.addEventListener('click', async () => {
-                const originalTextVal = originalText.value.trim();
-                const speechTextVal = speechText.value.trim();
+<script>
+/**
+ * Application State
+ */
+const state = {
+    currentImage: null, isCameraActive: false, cameraStream: null, isProcessingOCR: false,
+    wakeLock: null, aiWorker: null,
+    chatSessionId: Date.now(),
+    chatMessages: [],
+    settings: {
+        ocrEngine: 'tesseract', ocrLang: 'jpn+eng',
+        aiProvider: 'gemini', aiModel: 'gemini-2.5-flash',
+        keys: { gemini: '', openai: '', anthropic: '', xai: '' },
+        voiceUri: '', rate: 1.0,
+        roles: {
+            assistant: "あなたは有能なアシスタントです。質問に対して簡潔かつ正確に答えてください。",
+            programmer: "あなたはエキスパートプログラマーです。最適化されたコードと論理的な解説を提供します。",
+            marketer: "あなたは経験豊富なマーケターです。ユーザーの心を掴むコピーと戦略を提案します。",
+            storyteller: "あなたは魅力的なストーリーテラーです。創造的で情景が浮かぶような物語を語ります。"
+        }
+    }
+};
 
-                if (!speechTextVal) {
-                    alert("おんせいが ききとれなかったみたい。もういちど ろくおんしてね！");
-                    return;
+/**
+ * DOM Elements
+ */
+const els = {
+    nav: { chat: document.getElementById('nav-chat'), home: document.getElementById('nav-home'), history: document.getElementById('nav-history'), settings: document.getElementById('nav-settings') },
+    views: { chat: document.getElementById('view-chat'), home: document.getElementById('view-home'), history: document.getElementById('view-history'), settings: document.getElementById('view-settings') },
+    chat: { messages: document.getElementById('chat-messages'), input: document.getElementById('chat-input'), sendBtn: document.getElementById('btn-send-chat'), roleSelect: document.getElementById('chat-role-select') },
+    media: { container: document.getElementById('media-container'), placeholder: document.getElementById('media-placeholder'), img: document.getElementById('preview-img'), video: document.getElementById('camera-video'), overlay: document.getElementById('loading-overlay'), progress: document.getElementById('progress-text') },
+    inputs: { cameraBtn: document.getElementById('btn-camera'), uploadBtn: document.getElementById('btn-upload'), fileInput: document.getElementById('file-input'), ocrBtn: document.getElementById('btn-ocr'), textArea: document.getElementById('result-text'), copyBtn: document.getElementById('btn-copy'), sendToChatBtn: document.getElementById('btn-send-to-chat') },
+    settings: { ocrEngine: document.getElementById('setting-ocr-engine'), ocrLang: document.getElementById('setting-ocr-lang'), aiProvider: document.getElementById('setting-ai-provider'), aiModel: document.getElementById('setting-ai-model'), keyGemini: document.getElementById('key-gemini'), keyOpenAI: document.getElementById('key-openai'), keyAnthropic: document.getElementById('key-anthropic'), keyXai: document.getElementById('key-xai'), voice: document.getElementById('setting-voice'), rate: document.getElementById('setting-rate'), rateValue: document.getElementById('rate-value'), saveBtn: document.getElementById('btn-save-settings') },
+    history: { container: document.getElementById('history-container'), exportFsBtn: document.getElementById('btn-export-fs'), clearBtn: document.getElementById('btn-clear-history') },
+    toast: document.getElementById('toast-container')
+};
+
+/**
+ * IndexedDB (Version 2 - Added Chat History)
+ */
+const DB = {
+    dbName: 'ObsidianTerminalDB', version: 2, db: null,
+    init() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(this.dbName, this.version);
+            request.onerror = () => reject('DB Error');
+            request.onsuccess = e => { this.db = e.target.result; resolve(); };
+            request.onupgradeneeded = e => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings');
+                if (!db.objectStoreNames.contains('chat_sessions')) {
+                    const store = db.createObjectStore('chat_sessions', { keyPath: 'id' });
+                    store.createIndex('date', 'date', { unique: false });
                 }
+            };
+        });
+    },
+    async getSetting(key, def) {
+        return new Promise(res => {
+            if(!this.db) return res(def);
+            const req = this.db.transaction('settings', 'readonly').objectStore('settings').get(key);
+            req.onsuccess = () => res(req.result !== undefined ? req.result : def);
+            req.onerror = () => res(def);
+        });
+    },
+    async setSetting(key, val) {
+        return new Promise(res => {
+            if(!this.db) return res();
+            const tx = this.db.transaction('settings', 'readwrite');
+            tx.objectStore('settings').put(val, key);
+            tx.oncomplete = () => res();
+        });
+    },
+    async saveChatSession(session) {
+        return new Promise(res => {
+            if(!this.db) return res();
+            const tx = this.db.transaction('chat_sessions', 'readwrite');
+            tx.objectStore('chat_sessions').put(session);
+            tx.oncomplete = () => res();
+        });
+    },
+    async getChatSessions() {
+        return new Promise(res => {
+            if(!this.db) return res([]);
+            const req = this.db.transaction('chat_sessions', 'readonly').objectStore('chat_sessions').index('date').openCursor(null, 'prev');
+            const results = [];
+            req.onsuccess = e => {
+                const cursor = e.target.result;
+                if(cursor) { results.push(cursor.value); cursor.continue(); } else res(results);
+            };
+        });
+    },
+    async clearChatSessions() {
+        return new Promise(res => {
+            const tx = this.db.transaction('chat_sessions', 'readwrite');
+            tx.objectStore('chat_sessions').clear();
+            tx.oncomplete = () => res();
+        });
+    }
+};
 
-                step2.classList.add('hidden');
-                step3.classList.remove('hidden');
-
-                const combinedPrompt = `
-あなたは小学生向けの優しくて褒め上手な国語の先生です。
-児童が教科書を朗読しました。以下の「教科書の文章」と、児童が読んだ「朗読した文章(音声認識結果)」を比較して採点してください。
-
-採点基準：
-1. 正確さ：読み間違いや飛ばしがないか
-2. スムーズさ：つっかえずにスラスラ読めているか
-3. 感情・表現力：物語の登場人物になりきったり、感情を込めて元気よく読めているか
-4. 丁寧さ：一語一語をはっきりと、聞く人への配慮をもって丁寧に読めているか（音声認識の精度からも推測してください）
-
-【指示】
-・小学生が読んで分かるように、ひらがなを多めに、優しい言葉で書いてください。
-・厳しくせず、とにかくたくさん褒めてモチベーションを上げてください！
-・出力は必ず以下のJSONフォーマットのみにしてください。Markdownのコードブロック( \`\`\`json 等 )は絶対に含めないでください。純粋なJSON文字列のみ出力してください。
-
-{
-  "score": 100点満点での点数(数値のみ),
-  "accuracy": "正確さのフィードバック(ひらがな多め)",
-  "fluency": "スムーズさのフィードバック(ひらがな多め)",
-  "expression": "感情や表現力のフィードバック(ひらがな多め)",
-  "politeness": "丁寧さのフィードバック(ひらがな多め)",
-  "message": "先生からの全体のメッセージ（とにかくたくさん褒める）"
+/**
+ * Core Utilities
+ */
+function showToast(msg, type = 'info') {
+    const toast = document.createElement('div'); toast.className = 'toast';
+    const icon = type === 'success' ? 'ph-check-circle' : type === 'error' ? 'ph-warning-circle' : 'ph-info';
+    const color = type === 'success' ? 'var(--color-success)' : type === 'error' ? 'var(--color-danger)' : 'var(--color-text-primary)';
+    toast.innerHTML = `<i class="ph ${icon}" style="color: ${color}; font-size: 1.2rem;"></i><span>${msg}</span>`;
+    els.toast.appendChild(toast);
+    setTimeout(() => { toast.style.animation = 'slideDown 0.3s ease reverse forwards'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
-【教科書の文章】
-${originalTextVal}
+async function acquireWakeLock() {
+    if ('wakeLock' in navigator && !state.wakeLock) {
+        try { state.wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+    }
+}
+function releaseWakeLock() {
+    if (state.wakeLock) { state.wakeLock.release().then(() => state.wakeLock = null); }
+}
 
-【朗読した文章】
-${speechTextVal}
-`;
+function switchView(viewName) {
+    Object.values(els.views).forEach(v => v.classList.remove('active'));
+    Object.values(els.nav).forEach(n => n.classList.remove('active'));
+    els.views[viewName].classList.add('active');
+    els.nav[viewName].classList.add('active');
+    if(viewName === 'history') loadHistoryView();
+}
 
-                try {
-                    let responseText = "";
-                    const apiKey = localStorage.getItem('gemini_api_key');
+/**
+ * GenAI Chat Logics
+ */
+function renderMessage(role, content) {
+    const div = document.createElement('div');
+    div.className = `message message-${role === 'user' ? 'user' : 'ai'}`;
+    const innerHTML = role === 'user' ? content.replace(/\n/g, '<br>') : DOMPurify.sanitize(marked.parse(content));
+    div.innerHTML = `
+        <div class="content">${innerHTML}</div>
+        <div class="message-actions">
+            <button class="msg-btn" onclick="playTTS(this.parentElement.previousElementSibling.innerText)" title="音読"><i class="ph ph-speaker-high"></i></button>
+            <button class="msg-btn" onclick="copyText(this.parentElement.previousElementSibling.innerText)" title="コピー"><i class="ph ph-copy"></i></button>
+        </div>
+    `;
+    els.chat.messages.appendChild(div);
+    els.chat.messages.scrollTop = els.chat.messages.scrollHeight;
+    return div;
+}
 
-                    if (apiKey) {
-                        // APIキーがある場合は直接Gemini APIを叩く
-                        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                contents: [{ parts: [{ text: combinedPrompt }] }],
-                                generationConfig: {
-                                    responseMimeType: "application/json"
-                                }
-                            })
-                        });
-                        if (!res.ok) throw new Error("Gemini API Error");
-                        const data = await res.json();
-                        responseText = data.candidates[0].content.parts[0].text;
-                    } else {
-                        // APIキーがない場合はWorkerを利用
-                        const res = await fetch(WORKER_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ prompt: combinedPrompt })
-                        });
-                        if (!res.ok) throw new Error("API Network response was not ok");
-                        responseText = await res.text();
-                    }
+function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => showToast('コピーしました', 'success')).catch(() => showToast('失敗しました', 'error'));
+}
 
-                    let jsonStr = responseText;
-                    const jsonMatch = responseText.match(/```(?:json)?\n([\s\S]*?)\n```/);
-                    if(jsonMatch) {
-                        jsonStr = jsonMatch[1];
-                    }
-                    const startIndex = jsonStr.indexOf('{');
-                    const endIndex = jsonStr.lastIndexOf('}');
-                    if (startIndex !== -1 && endIndex !== -1) {
-                        jsonStr = jsonStr.substring(startIndex, endIndex + 1);
-                    }
+async function sendChat() {
+    const text = els.chat.input.value.trim();
+    if (!text) return;
+    
+    // Check API Key
+    const provider = state.settings.aiProvider;
+    const apiKey = state.settings.keys[provider];
+    if (!apiKey) { showToast(`${provider.toUpperCase()} のAPIキーが設定されていません`, 'error'); switchView('settings'); return; }
 
-                    let resultData;
-                    try {
-                        resultData = JSON.parse(jsonStr);
-                    } catch (e) {
-                        const tempObj = JSON.parse(responseText);
-                        if (tempObj.response || tempObj.text) {
-                            let innerText = tempObj.response || tempObj.text;
-                            const innerMatch = innerText.match(/```(?:json)?\n([\s\S]*?)\n```/);
-                            if (innerMatch) innerText = innerMatch[1];
-                            const sIdx = innerText.indexOf('{');
-                            const eIdx = innerText.lastIndexOf('}');
-                            if (sIdx !== -1 && eIdx !== -1) {
-                                resultData = JSON.parse(innerText.substring(sIdx, eIdx + 1));
-                            }
-                        } else {
-                            throw e;
-                        }
-                    }
+    // User Message
+    els.chat.input.value = '';
+    els.chat.input.style.height = '48px';
+    if(state.chatMessages.length === 0) els.chat.messages.innerHTML = ''; // Clear prompt
+    
+    state.chatMessages.push({ role: 'user', content: text });
+    renderMessage('user', text);
+    
+    // Start AI Generation
+    els.chat.sendBtn.disabled = true;
+    const aiMessageDiv = renderMessage('ai', '...');
+    const contentDiv = aiMessageDiv.querySelector('.content');
+    
+    await acquireWakeLock();
+    
+    const roleKey = els.chat.roleSelect.value;
+    const systemPrompt = state.settings.roles[roleKey];
 
-                    // 結果をUIに反映
-                    scoreValue.innerHTML = `${resultData.score}<span class="text-4xl text-gray-800">てん</span>`;
-                    accuracyFeedback.innerText = resultData.accuracy;
-                    fluencyFeedback.innerText = resultData.fluency;
-                    expressionFeedback.innerText = resultData.expression;
-                    politenessFeedback.innerText = resultData.politeness;
-                    messageFeedback.innerText = resultData.message;
+    let fullText = '';
+    state.aiWorker.postMessage({ provider, apiKey, model: state.settings.aiModel, messages: state.chatMessages, systemPrompt });
 
-                    resultLoading.classList.add('hidden');
-                    resultContent.classList.remove('hidden');
+    state.aiWorker.onmessage = async (e) => {
+        if (e.data.type === 'chunk') {
+            fullText += e.data.text;
+            contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(fullText));
+            els.chat.messages.scrollTop = els.chat.messages.scrollHeight;
+        } else if (e.data.type === 'done' || e.data.type === 'error') {
+            els.chat.sendBtn.disabled = false;
+            releaseWakeLock();
+            if (e.data.type === 'error') {
+                contentDiv.innerHTML = `<span style="color:var(--color-danger)">Error: ${e.data.message}</span>`;
+            } else {
+                state.chatMessages.push({ role: 'assistant', content: fullText });
+                // Auto Save Session
+                await DB.saveChatSession({ id: state.chatSessionId, date: Date.now(), messages: state.chatMessages, preview: state.chatMessages[0].content });
+            }
+        }
+    };
+}
 
-                } catch (error) {
-                    console.error("API Error:", error);
-                    // エラー時のフォールバック表示
-                    scoreValue.innerHTML = `💯<span class="text-4xl text-gray-800">はなまる！</span>`;
-                    accuracyFeedback.innerText = "さいごまで がんばって よめたね！";
-                    fluencyFeedback.innerText = "いっしょうけんめいな のが つたわってきたよ！";
-                    expressionFeedback.innerText = "きもちを こめて よんでくれたのが わかったよ！";
-                    politenessFeedback.innerText = "ひとつひとつの もじを ていねいに よめていました！";
-                    messageFeedback.innerText = "AIせんせいの ちょうしが わるくて くわしい さいてんが できなかったけど、きみが がんばって よんだことは ちゃんと わかっているよ！ はなまる です！💮";
-                    
-                    resultLoading.classList.add('hidden');
-                    resultContent.classList.remove('hidden');
-                }
-            });
+/**
+ * File System Access API (Export)
+ */
+async function exportHistory() {
+    if (!('showDirectoryPicker' in window)) { showToast('このブラウザはFile System Access APIに非対応です', 'error'); return; }
+    try {
+        const sessions = await DB.getChatSessions();
+        if(sessions.length === 0) return showToast('エクスポートする履歴がありません');
+        
+        const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+        const fileHandle = await dirHandle.getFileHandle(`ChatExport_${Date.now()}.json`, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(JSON.stringify(sessions, null, 2));
+        await writable.close();
+        showToast('エクスポートが完了しました', 'success');
+    } catch (err) {
+        if(err.name !== 'AbortError') showToast('エクスポートに失敗しました', 'error');
+    }
+}
+
+/**
+ * Vision / Legacy OCR Logics
+ */
+async function toggleCamera() {
+    if (state.isCameraActive) {
+        const canvas = document.createElement('canvas'); canvas.width = els.media.video.videoWidth; canvas.height = els.media.video.videoHeight;
+        canvas.getContext('2d').drawImage(els.media.video, 0, 0);
+        state.currentImage = canvas.toDataURL('image/jpeg', 0.8);
+        stopCamera();
+    } else {
+        try {
+            state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+            els.media.video.srcObject = state.cameraStream; state.isCameraActive = true; state.currentImage = null;
+            updateMediaView();
+        } catch (err) { showToast('カメラのアクセスに失敗しました', 'error'); }
+    }
+}
+function stopCamera() {
+    if (state.cameraStream) { state.cameraStream.getTracks().forEach(track => track.stop()); state.cameraStream = null; }
+    state.isCameraActive = false; updateMediaView();
+}
+function handleFileUpload(e) {
+    const file = e.target.files[0]; if (!file) return;
+    stopCamera();
+    const reader = new FileReader();
+    reader.onload = (ev) => { state.currentImage = ev.target.result; updateMediaView(); };
+    reader.readAsDataURL(file);
+}
+function updateMediaView() {
+    els.media.placeholder.style.display = (!state.currentImage && !state.isCameraActive) ? 'flex' : 'none';
+    els.media.img.style.display = (state.currentImage && !state.isCameraActive) ? 'block' : 'none';
+    els.media.video.style.display = state.isCameraActive ? 'block' : 'none';
+    if (state.currentImage && !state.isCameraActive) els.media.img.src = state.currentImage;
+    els.inputs.ocrBtn.disabled = !(state.currentImage || state.isCameraActive) || state.isProcessingOCR;
+    els.inputs.cameraBtn.innerHTML = state.isCameraActive ? '<i class="ph ph-aperture"></i> 撮影' : '<i class="ph ph-camera"></i> カメラ';
+}
+
+async function runOCR() {
+    if(!state.currentImage) { if(state.isCameraActive) await toggleCamera(); else return; }
+    state.isProcessingOCR = true; updateMediaView(); els.media.overlay.classList.add('active');
+    
+    try {
+        if (state.settings.ocrEngine === 'gemini') {
+            els.media.progress.innerText = 'AI AI Analysis...';
+            const apiKey = state.settings.keys.gemini;
+            if(!apiKey) throw new Error('Gemini API Key is missing. Settings画面で設定してください。');
+            const [mimeInfo, b64Data] = state.currentImage.split(',');
+            const mimeType = mimeInfo.match(/:(.*?);/)[1];
+            
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const body = { contents: [{ parts: [{ text: "Extract all text from this image accurately. Preserve layout with newlines. Return only the extracted text without any markdown formatting or comments." }, { inline_data: { mime_type: mimeType, data: b64Data } }] }] };
+            const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+            const json = await res.json();
+            if(!res.ok) throw new Error(json.error?.message || 'API Error');
+            els.inputs.textArea.value = json.candidates[0].content.parts[0].text;
+        } else {
+            // Fallback to Tesseract
+            els.media.progress.innerText = 'Initializing Tesseract...';
+            const worker = await Tesseract.createWorker({ logger: m => { if(m.status === 'recognizing text') els.media.progress.innerText = `${Math.round(m.progress * 100)}%`; } });
+            await worker.loadLanguage(state.settings.ocrLang);
+            await worker.initialize(state.settings.ocrLang);
+            const { data: { text } } = await worker.recognize(state.currentImage);
+            els.inputs.textArea.value = text;
+            await worker.terminate();
+        }
+        showToast('テキストを抽出しました', 'success');
+    } catch (err) {
+        showToast(err.message || 'OCR処理エラー', 'error'); console.error(err);
+    } finally {
+        state.isProcessingOCR = false; els.media.overlay.classList.remove('active'); updateMediaView();
+    }
+}
+
+/**
+ * TTS
+ */
+function loadVoices() {
+    const voices = speechSynthesis.getVoices();
+    els.settings.voice.innerHTML = '<option value="">システムデフォルト</option>';
+    voices.forEach(v => {
+        const opt = document.createElement('option'); opt.value = v.voiceURI; opt.textContent = `${v.name} (${v.lang})`;
+        if(v.voiceURI === state.settings.voiceUri) opt.selected = true;
+        els.settings.voice.appendChild(opt);
+    });
+}
+function playTTS(text) {
+    speechSynthesis.cancel();
+    if (!text) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    if (state.settings.voiceUri) {
+        const voice = speechSynthesis.getVoices().find(v => v.voiceURI === state.settings.voiceUri);
+        if (voice) utterance.voice = voice;
+    }
+    utterance.rate = state.settings.rate;
+    speechSynthesis.speak(utterance);
+}
+
+/**
+ * Settings & History
+ */
+async function loadSettings() {
+    const saved = await DB.getSetting('settings', state.settings);
+    state.settings = { ...state.settings, ...saved };
+    if(!state.settings.keys) state.settings.keys = { gemini: '', openai: '', anthropic: '', xai: '' }; // Fallback for old data
+    
+    els.settings.ocrEngine.value = state.settings.ocrEngine;
+    els.settings.ocrLang.value = state.settings.ocrLang;
+    els.settings.aiProvider.value = state.settings.aiProvider;
+    els.settings.aiModel.value = state.settings.aiModel;
+    els.settings.keyGemini.value = state.settings.keys.gemini;
+    els.settings.keyOpenAI.value = state.settings.keys.openai;
+    els.settings.keyAnthropic.value = state.settings.keys.anthropic;
+    els.settings.keyXai.value = state.settings.keys.xai;
+    els.settings.rate.value = state.settings.rate;
+    els.settings.rateValue.innerText = state.settings.rate.toFixed(1);
+    
+    // Auto Provider Change Logic
+    els.settings.aiProvider.addEventListener('change', (e) => {
+        const map = { gemini: 'gemini-2.5-flash', openai: 'gpt-4o', anthropic: 'claude-3-5-sonnet-20241022', xai: 'grok-beta' };
+        els.settings.aiModel.value = map[e.target.value] || '';
+    });
+}
+
+async function saveSettings() {
+    state.settings.ocrEngine = els.settings.ocrEngine.value;
+    state.settings.ocrLang = els.settings.ocrLang.value;
+    state.settings.aiProvider = els.settings.aiProvider.value;
+    state.settings.aiModel = els.settings.aiModel.value;
+    state.settings.keys.gemini = els.settings.keyGemini.value;
+    state.settings.keys.openai = els.settings.keyOpenAI.value;
+    state.settings.keys.anthropic = els.settings.keyAnthropic.value;
+    state.settings.keys.xai = els.settings.keyXai.value;
+    state.settings.voiceUri = els.settings.voice.value;
+    state.settings.rate = parseFloat(els.settings.rate.value);
+    
+    await DB.setSetting('settings', state.settings);
+    showToast('設定を保存しました', 'success');
+}
+
+async function loadHistoryView() {
+    const sessions = await DB.getChatSessions();
+    els.history.container.innerHTML = '';
+    if(sessions.length === 0) { els.history.container.innerHTML = '<div style="text-align:center; color: var(--color-text-secondary); padding: 2rem;">履歴がありません</div>'; return; }
+
+    sessions.forEach(s => {
+        const div = document.createElement('div'); div.className = 'history-item';
+        const d = new Date(s.date);
+        div.innerHTML = `
+            <div class="history-preview">${s.preview || 'No Content'}</div>
+            <div class="history-meta">
+                <span><i class="ph ph-chat-circle"></i> ${s.messages.length} msgs</span>
+                <span>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</span>
+            </div>
+        `;
+        div.addEventListener('click', () => {
+            state.chatSessionId = s.id;
+            state.chatMessages = [...s.messages];
+            els.chat.messages.innerHTML = '';
+            state.chatMessages.forEach(m => renderMessage(m.role, m.content));
+            switchView('chat');
         });
-    </script>
+        els.history.container.appendChild(div);
+    });
+}
+
+/**
+ * Event Listeners & Init
+ */
+els.nav.chat.addEventListener('click', () => switchView('chat'));
+els.nav.home.addEventListener('click', () => switchView('home'));
+els.nav.history.addEventListener('click', () => switchView('history'));
+els.nav.settings.addEventListener('click', () => switchView('settings'));
+
+// Chat Input
+els.chat.input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+});
+els.chat.input.addEventListener('input', function() {
+    this.style.height = '48px'; this.style.height = (this.scrollHeight) + 'px';
+});
+els.chat.sendBtn.addEventListener('click', sendChat);
+
+// Vision
+els.inputs.cameraBtn.addEventListener('click', toggleCamera);
+els.inputs.uploadBtn.addEventListener('click', () => els.inputs.fileInput.click());
+els.inputs.fileInput.addEventListener('change', handleFileUpload);
+els.inputs.ocrBtn.addEventListener('click', runOCR);
+els.inputs.copyBtn.addEventListener('click', () => copyText(els.inputs.textArea.value));
+els.inputs.sendToChatBtn.addEventListener('click', () => {
+    const text = els.inputs.textArea.value.trim();
+    if(text) { els.chat.input.value = "以下のテキストを要約・解説してください:\n\n" + text; switchView('chat'); els.chat.input.focus(); }
+});
+
+// Settings & History
+els.settings.rate.addEventListener('input', e => els.settings.rateValue.innerText = parseFloat(e.target.value).toFixed(1));
+els.settings.saveBtn.addEventListener('click', saveSettings);
+els.history.exportFsBtn.addEventListener('click', exportHistory);
+els.history.clearBtn.addEventListener('click', async () => {
+    if(confirm('全てのチャット履歴を削除しますか？')) { await DB.clearChatSessions(); state.chatMessages=[]; els.chat.messages.innerHTML=''; loadHistoryView(); showToast('削除しました'); }
+});
+speechSynthesis.onvoiceschanged = loadVoices;
+
+async function initApp() {
+    // Web Worker Initialization via Blob
+    const workerBlob = new Blob([document.getElementById('ai-worker-script').textContent], { type: 'application/javascript' });
+    state.aiWorker = new Worker(URL.createObjectURL(workerBlob));
+    
+    await DB.init();
+    await loadSettings();
+    updateMediaView();
+    
+    // Resume logic
+    const sessions = await DB.getChatSessions();
+    if(sessions.length > 0) {
+        state.chatSessionId = sessions[0].id;
+        state.chatMessages = [...sessions[0].messages];
+        els.chat.messages.innerHTML = '';
+        state.chatMessages.forEach(m => renderMessage(m.role, m.content));
+    }
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
+
+</script>
 </body>
 </html>

@@ -1,76 +1,68 @@
-# learn-ondoku
+# Obsidian Terminal
 
-## 📝 概要・説明 / Overview and Description
+## 概要・説明
+**Obsidian Terminal** は、洗練されたダークテーマのUIを備えたブラウザ完結型のマルチモーダルAIチャット＆OCRアプリケーションです。
+単一のHTMLファイルでありながら、Google Gemini、OpenAI、Anthropic、xAIなどの主要な生成AIプロバイダーに対応し、ストリーミング形式でのスムーズなチャット体験を提供します。
 
-### 🇯🇵 日本語
-「ろうどく チャレンジ！」は、小学生向けの朗読練習ウェブアプリケーションです。教科書の写真を撮ってAIに読み取らせ、その文章をマイクに向かって元気よく朗読すると、AI先生が優しく採点・フィードバックをしてくれます。子どもたちの音読の宿題を楽しく、そしてモチベーションを上げるためにサポートするツールです。ポップなUIとひらがな中心の優しい言葉遣いで、子どもが一人でも楽しみながら学習できます。
+また、端末のカメラや画像ファイルからテキストを読み取る「Vision Reader（OCR）」機能も統合されており、抽出したテキストをシームレスにAIチャットへ連携することが可能です。APIキーや設定、チャット履歴はすべてブラウザのローカルデータベース（IndexedDB）に安全に保存されるため、バックエンドサーバーを必要としません。
 
-### 🇬🇧 English
-"Reading Challenge!" is a web application designed for elementary school students to practice reading aloud. Kids can take a picture of their textbook, let the AI extract the text, and then read it out loud into the microphone. An "AI Teacher" will gently grade their reading and provide encouraging feedback. This tool is built to make reading homework fun and boost children's motivation. With a colorful UI and simple, gentle language, kids can enjoy learning independently.
+## 主な機能一覧
 
----
+### 🤖 マルチプロバイダーAIチャット (GenAI v2.0)
+- **複数AIエンジンのサポート**: Google Gemini, OpenAI (ChatGPT), Anthropic (Claude), xAI (Grok) のAPIにネイティブ対応。
+- **ストリーミング応答**: Web Workerを利用したバックグラウンド処理により、UIをブロックすることなくリアルタイムにAIの回答を生成・表示。
+- **ロール（役割）選択**: アシスタント、プログラマー、マーケター、ストーリーテラーなど、システムプロンプトをワンタッチで切り替え可能。
+- **Markdown & シンタックスハイライト**: コードブロックのハイライトとマークダウンのレンダリングに対応（DOMPurifyによる安全なサニタイズ処理込み）。
 
-## ✨ 主な機能一覧 / Key Features
+### 📸 Vision Reader (OCRエンジン)
+- **カメラ撮影 & 画像アップロード**: デバイスのカメラ（リアカメラ対応）を起動して直接撮影、またはローカルの画像ファイルを読み込み可能。
+- **ハイブリッドOCR**: 
+  - **ローカルOCR**: `Tesseract.js`を使用したオフラインでのテキスト抽出（日本語・英語対応）。
+  - **クラウドOCR**: `Gemini Vision` APIを利用した超高精度なテキスト抽出。
+- **チャット連携**: 抽出したテキストをワンクリックでチャットの入力欄へ転送し、要約や解説をAIに依頼可能。
 
-### 🇯🇵 日本語
-- **📷 教科書のテキスト読み取り (OCR)**: スマホのカメラやPCから画像をアップロードし、Gemini APIを利用して画像からテキストを高精度で抽出します。
-- **🎤 音声認識による録音**: ブラウザ標準のWeb Speech APIを使用して、子どもの朗読音声をリアルタイムにテキスト化します。
-- **👩‍🏫 AI先生の採点とアドバイス**: 抽出した元の文章と朗読した文章をAIが比較。「正確さ」「スムーズさ」「表現力」「丁寧さ」の4項目で100点満点の採点を行い、とにかく褒めて伸ばす優しいフィードバックを提供します。
-- **⚙️ カスタムAPIキー設定 (大人向け)**: 画面右上の設定メニューから、自身のGemini APIキーを安全にローカル保存して利用できます（設定がない場合はフォールバック用のWorker APIを利用）。
+### 💾 履歴管理とエクスポート
+- **ローカル自動保存**: IndexedDBを用いてチャットセッションを自動的に保存。過去の会話をいつでも再開できます。
+- **ファイルエクスポート**: File System Access APIを利用し、チャット履歴をJSONファイルとしてローカルPCに直接書き出し可能。
 
-### 🇬🇧 English
-- **📷 Textbook Text Extraction (OCR)**: Upload an image or take a photo with a smartphone camera. The app uses the Gemini API to extract text with high accuracy.
-- **🎤 Voice Recording via Speech Recognition**: Utilizes the browser's native Web Speech API to transcribe the child's reading out loud in real-time.
-- **👩‍🏫 AI Teacher's Grading & Advice**: The AI compares the original text with the spoken text. It calculates a score out of 100 based on "Accuracy," "Fluency," "Expression," and "Politeness," providing super encouraging and gentle feedback.
-- **⚙️ Custom API Key Configuration (For Adults)**: Through the settings menu, parents can securely save their own Gemini API key to local storage (falls back to a shared Worker API if not set).
+### 🔊 音声読み上げ (TTS) と便利な機能
+- **テキスト読み上げ**: Web Speech APIを利用したメッセージの音声読み上げ機能。読み上げ速度や音声エンジンのカスタマイズが可能。
+- **Wake Lock API**: AIの応答生成中やテキスト抽出中に端末がスリープするのを防止。
+- **クリップボード連携**: メッセージや抽出テキストのワンクリックコピー機能。
 
----
+## 使用技術・ライブラリ
 
-## 🛠 使用技術・ライブラリ / Technologies & Libraries
+**コア技術**
+- HTML5 / CSS3 / Vanilla JavaScript (フレームワークレス)
+- Web Worker (API通信の非同期処理)
+- IndexedDB (設定とチャット履歴のローカル保存)
+- Web APIs (MediaDevices API, Web Speech API, File System Access API, Wake Lock API)
 
-- **Frontend**: HTML5, Vanilla JavaScript
-- **Styling**: Tailwind CSS (via CDN)
-- **Typography**: Google Fonts (Zen Maru Gothic)
-- **Speech Recognition**: Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`)
-- **Generative AI / OCR**: Google Gemini API (`gemini-2.5-flash`)
-- **Backend (Fallback)**: Cloudflare Workers (used as a proxy when a custom API key is not configured)
+**外部ライブラリ (CDN経由)**
+- [Tesseract.js](https://tesseract.projectnaptha.com/) (ローカルOCRエンジン)
+- [Marked.js](https://marked.js.org/) (Markdownパーサー)
+- [DOMPurify](https://github.com/cure53/DOMPurify) (XSS対策・HTMLサニタイズ)
+- [Phosphor Icons](https://phosphoricons.com/) (UIアイコン)
+- Google Fonts (Syne, DM Sans, JetBrains Mono)
 
----
+## セットアップ・使い方
 
-## 🚀 セットアップ・使い方 / Setup & Usage
+本プロジェクトは完全にフロントエンドのみで動作するため、ビルドツールやサーバーの構築は不要です。
 
-### 🇯🇵 日本語
-1. **アプリを開く**: 本リポジトリのHTMLファイルをブラウザで開きます。※音声認識機能を使用するため、**Google Chrome** または **Microsoft Edge** を推奨します。
-2. **APIキーの設定（任意）**: 画面右上の「⚙️（設定ボタン）」をクリックし、保護者の方がご自身のGemini APIキーを入力して「ほぞんする」を押してください。
-3. **ステップ 1（写真撮影）**: 「ここをおして しゃしんを えらぶ」ボタンを押し、読みたい教科書のページを撮影するか画像を選択します。AIが文字を読み取ります。
-4. **ステップ 2（朗読する）**: 読み取られた文章を確認したら、「ろくおん スタート」を押して、マイクに向かって元気よく文章を読み上げます。読み終わったら終了ボタンを押します。
-5. **ステップ 3（採点結果）**: 「AIせんせいに さいてんしてもらう」ボタンを押すと、AI先生が点数と4つのポイントで優しいアドバイスを返してくれます！
+### 1. 起動方法
+1. 提供されたソースコードを `index.html` として保存します。
+2. 保存した `index.html` をお好みのモダンブラウザ（Chrome, Edge, Safari等）で直接開くか、VS Codeの「Live Server」などのローカルサーバー機能を使用して開きます。
+*(※カメラ機能やFile System Access APIを完全に動作させるためには、`localhost` または `https` 環境での実行を推奨します。)*
 
-### 🇬🇧 English
-1. **Open the App**: Open the HTML file in a web browser. *Note: **Google Chrome** or **Microsoft Edge** is highly recommended for the Web Speech API to work properly.*
-2. **Configure API Key (Optional)**: Click the "⚙️ (Settings)" button in the top right corner. Parents can enter their Gemini API key and save it.
-3. **Step 1 (Take a Photo)**: Click the camera button to take a picture or upload an image of the textbook page. The AI will extract the text.
-4. **Step 2 (Read Aloud)**: Once the text is displayed, click "Start Recording" and read the text aloud into the microphone. Click the stop button when finished.
-5. **Step 3 (Get Results)**: Click the "Ask AI Teacher to Grade" button. The AI teacher will analyze the audio and provide a score along with gentle feedback across four categories!
+### 2. 初期設定 (APIキーの登録)
+AIチャットを利用するためには、各プロバイダーのAPIキーが必要です。
+1. 画面右上の **「設定 (歯車アイコン)」** をクリックします。
+2. **「API Keys (Local Secure Storage)」** セクションにて、利用したいプロバイダー（Gemini, OpenAI, Anthropic, xAI）のAPIキーを入力します。
+   - *※入力したキーはブラウザの内部（IndexedDB）にのみ保存され、外部サーバーに送信されることはありません。*
+3. **「AI Engine & Models」** セクションで、メインで使用するチャットプロバイダーとモデル名を選択（または手動入力）します。
+4. 画面最下部の **「設定を保存」** をクリックします。
 
----
-
-## 📸 スクリーンショット / Screenshots
-
-*(ここに実際のスクリーンショット画像を配置してください / Place your actual screenshots here)*
-
-![ステップ1：教科書読み取り / Step 1: OCR Extraction](https://via.placeholder.com/600x400?text=Step+1:+Textbook+OCR)
-
-![ステップ2：朗読録音 / Step 2: Voice Recording](https://via.placeholder.com/600x400?text=Step+2:+Voice+Recording)
-
-![ステップ3：採点結果 / Step 3: Grading Results](https://via.placeholder.com/600x400?text=Step+3:+AI+Grading+Results)
-
----
-
-## 📄 ライセンス / License
-
-### 🇯🇵 日本語
-このプロジェクトは **MIT ライセンス** の下で公開されています。自由に利用、改変、配布することが可能です。詳細については、リポジトリ内の `LICENSE` ファイルをご参照ください。
-
-### 🇬🇧 English
-This project is licensed under the **MIT License**. You are free to use, modify, and distribute it. See the `LICENSE` file in the repository for more details.
+### 3. アプリケーションの使い方
+- **チャット機能**: 画面左上のチャットアイコンを選択し、メッセージを入力して送信（Shift+Enterで改行、Enterで送信）。
+- **OCR機能 (Vision)**: カメラアイコンを選択し、「カメラ」または「ファイル」から画像を読み込みます。「テキストを抽出」ボタンを押すと設定されたエンジンで文字起こしが開始されます。「このテキストをチャットに入力」を押すと、抽出結果をAIに分析させることができます。
+- **履歴の確認**: 時計アイコンを選択すると、自動保存された過去のチャットセッションを確認・再開できます。ここからJSON形式でのエクスポートも可能です。
